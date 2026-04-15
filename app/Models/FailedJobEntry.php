@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class FailedJobEntry extends Model
+{
+    public $timestamps = false;
+
+    protected $table = 'failed_jobs';
+
+    protected $fillable = [
+        'uuid',
+        'connection',
+        'queue',
+        'payload',
+        'exception',
+        'failed_at',
+    ];
+
+    protected $casts = [
+        'failed_at' => 'datetime',
+    ];
+}
