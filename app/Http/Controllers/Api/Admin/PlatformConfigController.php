@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
 use App\Models\PlatformConfig;
+use App\Services\Billing\PlatformConfigService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,11 +13,13 @@ use Illuminate\Validation\Rule;
 
 class PlatformConfigController extends Controller
 {
+    public function __construct(private readonly PlatformConfigService $service)
+    {
+    }
+
     public function index(): JsonResponse
     {
-        $configs = PlatformConfig::query()
-            ->orderBy('key')
-            ->get()
+        $configs = $this->service->all()
             ->map(fn (PlatformConfig $config): array => $this->toResponseItem($config))
             ->all();
 
@@ -75,6 +78,8 @@ class PlatformConfigController extends Controller
 
             $updated[] = $this->toResponseItem($config);
         }
+
+        $this->service->refreshCache();
 
         return ApiResponse::success(['configs' => $updated]);
     }

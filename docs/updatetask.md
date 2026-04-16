@@ -377,66 +377,175 @@ Ghi rõ trong mỗi task:
 
 ## Task 12 — Rà soát phần còn thiếu theo technical design (mục 12–56)
 
-**Trạng thái:** 🔄 Đang làm
+**Trạng thái:** ✅ Hoàn thành (gap review + 4 module đã chốt)
 
 ### Đã làm
 
 - Đọc lại phạm vi design từ mục `12` đến `56` trong `docs/license-platform-technical-design.md`.
 - Đối chiếu nhanh với trạng thái hiện tại của project sau các task 1–11.
-- Xác định đây là bước rà soát gap trước khi bắt tay bổ sung từng module còn thiếu.
+- Chốt và triển khai nhanh các gap ưu tiên cao, giảm rủi ro contract/API:
+    - `16. Environment Separation`
+    - `17. Multi-currency Pricing`
+    - `18. Health & Status API`
+    - `19. GDPR & Data Retention`
 
 ### File liên quan
 
 - `docs/license-platform-technical-design.md`
 - `docs/updatetask.md`
+- `database/migrations/2026_04_14_000180_create_plan_pricing_table.php`
+- `database/migrations/2026_04_14_000200_create_data_request_and_retention_tables.php`
+- `database/migrations/2026_04_14_000210_create_maintenance_windows_table.php`
+- `database/migrations/2026_04_14_000220_create_environments_table.php`
+- `app/Models/PlanPricing.php`
+- `app/Models/DataRequest.php`
+- `app/Models/DataRetentionPolicy.php`
+- `app/Models/MaintenanceWindow.php`
+- `app/Models/Environment.php`
+- `app/Services/Pricing/PricingService.php`
+- `app/Services/Retention/DataRetentionService.php`
+- `app/Http/Controllers/Api/Admin/PlanPricingController.php`
+- `app/Http/Controllers/Api/Admin/ClientEnvironmentController.php`
+- `app/Http/Controllers/Api/Admin/MaintenanceWindowController.php`
+- `app/Http/Controllers/Api/Customer/DataRequestController.php`
+- `routes/api.php`
 
 ### Kết quả
 
-- Có điểm bắt đầu rõ ràng cho phase rà soát gap.
-- Sẵn sàng bóc tách từng mục chưa làm theo thứ tự ưu tiên của technical design.
-- Đã triển khai nhanh 2 gap nhỏ ưu tiên cao:
-    - `18. Health & Status API`
-    - `16. Environment Separation`
+- Gap review đã chuyển từ khảo sát sang chốt triển khai thực tế cho 4 mục ưu tiên cao.
+- Các contract public và nền tảng vận hành hiện đã sát hơn với technical design.
+- Bước tiếp theo là tiếp tục các mục còn thiếu nhưng ít ảnh hưởng trực tiếp đến API core.
 
-### Đã triển khai ở mục 17
+---
 
-- `plan_pricing` migration
-- `PlanPricing` model
-- `PricingService` để resolve giá theo currency và fallback default
-- `PlanPricingController` cho admin API
+## Task 13 — Rà soát và lấp các gap tiếp theo sau mục 19
 
-### Đã triển khai ở mục 19
+**Trạng thái:** ✅ Hoàn thành (review 20–24 + phân loại trạng thái rõ ràng)
 
-- `data_requests` migration
-- `data_retention_policies` migration
-- `DataRequest` model
-- `DataRetentionPolicy` model
-- `DataRequestController` cho customer API
-- `DataRetentionService` cho retention cleanup
+### Đã làm
 
-### Đã triển khai ở mục 18
+- Rà soát kỹ các mục `20–24` trong technical design và đối chiếu với code hiện có, không chỉ nhìn surface-level mà kiểm tra cả controller, job, model, route và migration liên quan.
+- Phân loại trạng thái thực tế theo từng mục để chuẩn hoá backlog:
+    - `20. Caching Strategy` → **làm dở / đang bổ sung**. Đã có `LicenseCacheService` và cache invalidation theo luồng activate/validate, nhưng vẫn còn thiếu phần hoàn thiện theo spec như Redis cache policy đầy đủ, stampede protection chuẩn hoá và wiring vào toàn bộ luồng revoke/suspend/expiry.
+    - `21. Background Job & Queue Spec` → **đã có phần lớn**. Project đã có `WebhookDeliveryJob`, `RunDunningStepJob`, `RecoverDunningSubscriptionJob`, `DataRetentionCleanupJob`, cùng DLQ controller/API và scheduler/command flow cho các tác vụ nền; còn thiếu phần chuẩn hoá/đồng bộ chi tiết queue config và retry/DLQ contract theo spec.
+    - `22. Database Migration Strategy` → **làm dở / cần chuẩn hoá**. Repo có nhiều migration forward-only và pattern an toàn, nhưng chưa có tài liệu/chuẩn nội bộ riêng để cover đầy đủ zero-downtime, blue-green, rollback, checklist như design.
+    - `23. Webhook Signature Verification` → **đã có**. `WebhookDeliveryJob` tạo chữ ký HMAC-SHA256 và gửi kèm `X-LP-Signature-256`/`X-LP-Timestamp`/`X-LP-Event`/`X-LP-Delivery`.
+    - `24. Metered / Usage-Based Licensing` → **đã bổ sung nền tảng nhưng còn tiếp tục chuẩn hoá**. Đã có schema mới, model, service và controller, nhưng cần tiếp tục chuẩn hoá contract/API và khớp lại hoàn toàn với design nếu muốn coi là done.
 
-- `GET /api/v1/health`
-- `GET /api/v1/status`
-- `GET /api/v1/version`
-- `maintenance_windows` migration
-- `MaintenanceWindow` model
-- status endpoint đọc maintenance window đang active và trả `degraded` khi có maintenance
+### Đã phát hiện trong code
 
-### Đã triển khai ở mục 16
+- `app/Jobs/WebhookDeliveryJob.php`
+- `app/Jobs/RunDunningStepJob.php`
+- `app/Jobs/RecoverDunningSubscriptionJob.php`
+- `app/Jobs/DataRetentionCleanupJob.php`
+- `app/Http/Controllers/Api/Admin/WebhookDeliveryController.php`
+- `app/Http/Controllers/Api/Admin/JobDlqController.php`
+- `app/Models/WebhookDelivery.php`
+- `database/migrations/2026_04_15_000260_create_webhook_deliveries_table.php`
+- `app/Services/Billing/PricingService.php`
+- `app/Services/Billing/LicenseCacheService.php`
+- `app/Services/Billing/UsageService.php`
+- `app/Http/Controllers/Api/Admin/UsageController.php`
+- `database/migrations/2026_04_15_000270_create_usage_based_licensing_tables.php`
+- `routes/api.php`
+- `tests/Feature/WebhookDeliveryAndDlqTest.php`
 
-- `environments` migration
-- `Environment` model
-- `ClientEnvironmentController`
-- `GET /api/v1/client/environment`
-- test đảm bảo trả `ok` hoặc `not_found`
+### Kết quả
+
+- `20` và `22` là hai mục còn cần chuẩn hoá rõ nhất.
+- `21` và `23` đã có hiện thực thực tế, chỉ cần tinh chỉnh nếu muốn sát 100% design.
+- `24` đã có code nền nhưng chưa nên ghi là hoàn tất cuối cùng cho tới khi khớp contract/spec xong.
 
 ### Hướng xử lý tiếp theo
 
-1. So khớp từng mục 12–56 với code hiện có.
+1. Hoàn thiện cache strategy cho mục `20`.
+2. Chuẩn hoá lại mục `21` theo queue/retry/DLQ contract rõ ràng hơn.
+3. Ghi rõ chiến lược migration cho mục `22` để tránh coi là complete nhầm.
+4. Tiếp tục xác nhận `24` theo contract/spec trước khi chốt trạng thái hoàn tất.
+
+---
+
+## Task 14 — Triển khai các gap còn thiếu trong mục 20–24
+
+**Trạng thái:** ✅ Hoàn thành (20–24 đã sạch hơn và có contract rõ hơn)
+
+### Đã làm
+
+- Chốt danh sách gap còn thiếu theo mức độ ảnh hưởng:
+    - cache layer / invalidation cho mục `20`
+    - metered licensing cho mục `24`
+- Giữ lại phần `21` và `23` như là đã có nền tảng, chỉ cần tinh chỉnh/chuẩn hoá thêm.
+- Ghi nhận `22` là mảng cần chuẩn hoá tài liệu và checklist chiến lược migration.
+- Thêm test feature cho phần cache và usage để bảo vệ contract mới:
+    - `tests/Feature/UsageAndCacheTest.php`
+- Bắt đầu triển khai mục `25` với schema + model + API nền tảng cho reseller.
+
+### File liên quan
+
+- `docs/license-platform-technical-design.md`
+- `docs/updatetask.md`
+- `docs/architecture/migration-strategy.md`
+- `tests/Feature/UsageAndCacheTest.php`
+- `database/migrations/2026_04_16_000280_create_reseller_tables.php`
+- `app/Models/Reseller.php`
+- `app/Models/ResellerPlan.php`
+- `app/Models/ResellerKeyPool.php`
+- `app/Models/ResellerKeyAssignment.php`
+- `app/Models/ResellerUser.php`
+- `app/Http/Controllers/Api/Admin/ResellerController.php`
+- `routes/api.php`
+
+### Kết quả
+
+- Có backlog rõ ràng cho phần cần làm tiếp theo ngay sau audit.
+- Nhóm `20–24` đã được đưa về trạng thái sạch hơn về mặt tài liệu, contract và nền tảng code.
+- Đã mở tiếp mục `25` với phần nền tảng đầu tiên.
+- Trạng thái đã được tách thành ba nhóm rõ ràng: **đã có**, **làm dở**, **còn thiếu**.
+
+### Bước tiếp theo
+
+1. So khớp từng mục `12–56` với code hiện có.
 2. Ghi lại module nào đã đủ, module nào còn thiếu, module nào làm dở.
 3. Ưu tiên các mục ảnh hưởng trực tiếp tới contract/API và background jobs.
-4. Tiếp tục ngay mục 12–19, ưu tiên các endpoint/public contract có thể hoàn thiện nhanh và giảm gap lớn nhất.
+4. Tiếp tục ngay mục `27` để hoàn thiện SDK Specification sau khi chốt IP restriction flows.
+5. Tiếp tục triển khai mục `26` sau khi chốt reseller flows.
+
+---
+
+## Task 15 — Tiếp tục chuẩn hoá reseller, IP restriction, usage và response envelope
+
+**Trạng thái:** 🔄 Đang làm
+
+### Đã làm
+
+- Đọc lại `docs/license-platform-technical-design.md` và `docs/updatetask.md` để xác định các module đang đi tiếp theo.
+- Kiểm tra hiện trạng các controller mới liên quan:
+    - `RestrictionController`
+    - `ResellerController`
+    - `UsageController`
+- Chuẩn hoá `ApiResponse` để có thể nhận object/Arrayable ở cấp controller thay vì buộc mọi chỗ phải tự `toArray()`.
+- Bắt đầu rà soát lại các linter warning còn tồn tại ở service/controller mới.
+
+### File liên quan
+
+- `docs/license-platform-technical-design.md`
+- `docs/updatetask.md`
+- `app/Support/ApiResponse.php`
+- `app/Http/Controllers/Api/Admin/RestrictionController.php`
+- `app/Http/Controllers/Api/Admin/ResellerController.php`
+- `app/Http/Controllers/Api/Admin/UsageController.php`
+- `app/Services/Billing/UsageService.php`
+
+### Kết quả
+
+- API response envelope đã linh hoạt hơn cho các DTO/model mới.
+- Backlog tiếp theo đang tập trung vào việc làm sạch warning và khớp contract của reseller/IP restriction/usage.
+
+### Bước tiếp theo
+
+1. Hạ tiếp linter warnings trong `UsageService`, `ResellerController`, `UsageController`.
+2. Chuẩn hoá tiếp các helper và typed locals trong các service/controller mới.
+3. Tiếp tục bám technical design để hoàn thiện các contract còn dang dở.
 
 ---
 

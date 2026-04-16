@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\RecoverDunningSubscriptionJob;
 use App\Models\DunningConfig;
 use App\Models\DunningLog;
 use App\Models\Subscription;
 use App\Support\ApiResponse;
+use App\Services\Billing\DunningOrchestrator;
 use App\Services\Billing\DunningService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,7 +100,7 @@ class DunningController extends Controller
         ]);
     }
 
-    public function retryPayment(string $id, DunningService $service): JsonResponse
+    public function retryPayment(string $id, DunningService $service, DunningOrchestrator $orchestrator): JsonResponse
     {
         $subscription = Subscription::query()->find($id);
 
@@ -112,7 +112,7 @@ class DunningController extends Controller
             return ApiResponse::error('SUBSCRIPTION_NOT_PAST_DUE', 'Subscription is not in past_due state.', 422);
         }
 
-        $service->recoverSubscription($subscription);
+        $orchestrator->retryPayment($subscription);
 
         return ApiResponse::success([
             'retried' => true,

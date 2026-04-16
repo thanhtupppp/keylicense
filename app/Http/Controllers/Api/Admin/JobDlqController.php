@@ -13,21 +13,20 @@ class JobDlqController extends Controller
     {
         return ApiResponse::success([
             'jobs' => FailedJobEntry::query()->latest('failed_at')->get(),
+            'count' => FailedJobEntry::query()->count(),
         ]);
     }
 
     public function retry(string $id): JsonResponse
     {
-        $job = FailedJobEntry::query()->findOrFail($id);
-        $job->delete();
+        FailedJobEntry::query()->findOrFail($id)->delete();
 
         return ApiResponse::success(['retried' => true]);
     }
 
     public function discard(string $id): JsonResponse
     {
-        $job = FailedJobEntry::query()->findOrFail($id);
-        $job->delete();
+        FailedJobEntry::query()->findOrFail($id)->delete();
 
         return ApiResponse::success(['discarded' => true]);
     }

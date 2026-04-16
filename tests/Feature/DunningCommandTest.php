@@ -2,19 +2,13 @@
 
 use App\Jobs\RunDunningStepJob;
 use App\Models\DunningConfig;
-use App\Models\DunningLog;
-use App\Models\Product;
 use App\Services\Billing\DunningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\Feature\Concerns\DunningFixtures;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    // Middleware is disabled per test suite to keep command tests isolated.
-    $this->withoutMiddleware();
-});
+uses(TestCase::class, RefreshDatabase::class);
 
 test('dispatches configured dunning steps for all products', function (): void {
     DunningFixtures::seedDunningConfig(1);
@@ -29,13 +23,7 @@ test('dispatches configured dunning steps for all products', function (): void {
 });
 
 test('dispatches only product specific and global dunning steps when product is provided', function (): void {
-    $product = Product::query()->create([
-        'code' => 'prod-pro',
-        'name' => 'Pro Product',
-        'description' => null,
-        'category' => null,
-        'status' => 'active',
-    ]);
+    $product = DunningFixtures::createPastDueSubscription()->entitlement->plan->product;
 
     DunningFixtures::seedDunningConfig(1);
     DunningFixtures::seedDunningConfig(3);
@@ -43,14 +31,14 @@ test('dispatches only product specific and global dunning steps when product is 
 
     Bus::fake();
 
-    $this->artisan('dunning:run-daily --product_id='.$product->id.' --sync')
+    $this->artisan("dunning:run-daily --product_id={$product->id} --sync")
         ->assertExitCode(0);
 
     Bus::assertDispatched(RunDunningStepJob::class, 3);
 });
 
 test('runs dunning step and creates logs', function (): void {
-    $subscription = DunningFixtures::seedPastDueSubscription();
+    $subscription = DunningFixtures::createPastDueSubscription();
     DunningFixtures::seedDunningConfig(1);
 
     app(DunningService::class)->runStep(1);
@@ -64,7 +52,7 @@ test('runs dunning step and creates logs', function (): void {
 });
 
 test('recovery service restores subscription entitlement and licenses', function (): void {
-    $subscription = DunningFixtures::seedPastDueSubscription();
+    $subscription = DunningFixtures::createPastDueSubscription();
     $service = app(DunningService::class);
 
     $service->recoverSubscription($subscription);

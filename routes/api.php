@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\DunningController;
 use App\Http\Controllers\Api\Admin\EntitlementController;
 use App\Http\Controllers\Api\Admin\LicenseController;
+use App\Http\Controllers\Api\Admin\ApiKeyController;
 use App\Http\Controllers\Api\Admin\BillingWebhookController;
 use App\Http\Controllers\Api\Admin\InvoiceController;
 use App\Http\Controllers\Api\Admin\JobDlqController;
@@ -12,8 +13,12 @@ use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Api\Admin\WebhookDeliveryController;
 use App\Http\Controllers\Api\Admin\PlanPricingController;
 use App\Http\Controllers\Api\Admin\PlatformConfigController;
+use App\Http\Controllers\Api\Admin\RestrictionController;
 use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\UsageController;
 use App\Http\Controllers\Api\Admin\RefundController;
+use App\Http\Controllers\Api\Admin\MfaController;
+use App\Http\Controllers\Api\Admin\ResellerController;
 use App\Http\Controllers\Api\Client\ClientEnvironmentController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Api\Customer\DataRequestController;
@@ -29,6 +34,11 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/version', [HealthController::class, 'version']);
 
     Route::post('/admin/auth/login', [AuthController::class, 'login']);
+    Route::post('/admin/auth/mfa/setup', [MfaController::class, 'setup']);
+    Route::post('/admin/auth/mfa/verify-setup', [MfaController::class, 'verifySetup']);
+    Route::post('/admin/auth/mfa/challenge', [MfaController::class, 'challenge']);
+    Route::post('/admin/auth/mfa/disable', [MfaController::class, 'disable']);
+    Route::post('/admin/auth/mfa/regenerate-backup-codes', [MfaController::class, 'regenerateBackupCodes']);
     Route::post('/customer/auth/register', [CustomerAuthController::class, 'register']);
     Route::post('/customer/auth/verify-email', [CustomerAuthController::class, 'verifyEmail']);
     Route::post('/customer/auth/resend-verification', [CustomerAuthController::class, 'resendVerification']);
@@ -41,6 +51,9 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/plans/{planId}/pricing/{currency}', [PlanPricingController::class, 'update']);
         Route::post('/entitlements', [EntitlementController::class, 'store']);
         Route::post('/licenses/issue', [LicenseController::class, 'issue']);
+        Route::post('/api-keys', [ApiKeyController::class, 'issue']);
+        Route::post('/api-keys/{id}/rotate', [ApiKeyController::class, 'rotate']);
+        Route::delete('/api-keys/{id}', [ApiKeyController::class, 'revoke']);
         Route::post('/orders/{orderId}/refund', [RefundController::class, 'store']);
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
@@ -63,11 +76,43 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/jobs/dlq/{id}/discard', [JobDlqController::class, 'discard']);
         Route::get('/webhook-deliveries', [WebhookDeliveryController::class, 'index']);
 
+        Route::get('/usage/summaries', [UsageController::class, 'index']);
+        Route::post('/usage/records', [UsageController::class, 'store']);
+        Route::get('/plans/{planId}/usage-limits', [UsageController::class, 'limits']);
+
+        Route::get('/resellers', [ResellerController::class, 'index']);
+        Route::post('/resellers', [ResellerController::class, 'store']);
+        Route::post('/resellers/auth/login', [ResellerController::class, 'auth']);
+        Route::get('/resellers/{resellerId}/pools', [ResellerController::class, 'pools']);
+        Route::post('/resellers/{resellerId}/pools', [ResellerController::class, 'createPool']);
+        Route::get('/resellers/{resellerId}/pools/{poolId}/keys', [ResellerController::class, 'poolKeys']);
+        Route::post('/resellers/{resellerId}/pools/{poolId}/assign', [ResellerController::class, 'assignPool']);
+        Route::get('/resellers/{resellerId}/reports', [ResellerController::class, 'reports']);
+        Route::get('/licenses/{licenseId}/ip-allowlist', [RestrictionController::class, 'allowlistIndex']);
+        Route::post('/licenses/{licenseId}/ip-allowlist', [RestrictionController::class, 'allowlistStore']);
+        Route::delete('/licenses/{licenseId}/ip-allowlist/{entryId}', [RestrictionController::class, 'allowlistDestroy']);
+        Route::get('/ip-blocklist', [RestrictionController::class, 'blocklistIndex']);
+        Route::post('/ip-blocklist', [RestrictionController::class, 'blocklistStore']);
+        Route::delete('/ip-blocklist/{entryId}', [RestrictionController::class, 'blocklistDestroy']);
+        Route::get('/plans/{planId}/geo-restrictions', [RestrictionController::class, 'geoIndex']);
+        Route::put('/plans/{planId}/geo-restrictions', [RestrictionController::class, 'geoStore']);
+        Route::delete('/plans/{planId}/geo-restrictions/{restrictionId}', [RestrictionController::class, 'geoDestroy']);
+
+        Route::get('/licenses/{licenseId}/ip-allowlist', [RestrictionController::class, 'licenseAllowlist']);
+        Route::post('/licenses/{licenseId}/ip-allowlist', [RestrictionController::class, 'storeLicenseAllowlist']);
+        Route::delete('/licenses/{licenseId}/ip-allowlist/{entryId}', [RestrictionController::class, 'deleteLicenseAllowlist']);
+        Route::get('/ip-blocklist', [RestrictionController::class, 'blocklist']);
+        Route::post('/ip-blocklist', [RestrictionController::class, 'storeBlocklist']);
+        Route::delete('/ip-blocklist/{id}', [RestrictionController::class, 'deleteBlocklist']);
+        Route::get('/plans/{planId}/geo-restrictions', [RestrictionController::class, 'planGeoRestrictions']);
+        Route::put('/plans/{planId}/geo-restrictions', [RestrictionController::class, 'upsertPlanGeoRestrictions']);
+
         Route::post('/webhooks/deliver-test', [WebhookDeliveryController::class, 'index']);
 
         Route::get('/auth/sessions', [AdminSessionController::class, 'index']);
         Route::delete('/auth/sessions/{id}', [AdminSessionController::class, 'destroy']);
         Route::delete('/auth/sessions', [AdminSessionController::class, 'destroyOthers']);
+        Route::delete('/auth/sessions/revoke-others', [AdminSessionController::class, 'destroyOthers']);
         Route::get('/auth/login-history', [AdminSessionController::class, 'loginHistory']);
 
         Route::get('/users/{id}/sessions', [AdminSessionController::class, 'listUserSessions']);

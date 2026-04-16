@@ -21,6 +21,8 @@ class WebhookDeliveryJob implements ShouldQueue
 
     public int $tries = 5;
 
+    public array $backoff = [30, 120, 600, 1800];
+
     public function __construct(
         public string $webhookUrl,
         public string $event,
@@ -28,14 +30,19 @@ class WebhookDeliveryJob implements ShouldQueue
         public string $secret,
         public ?string $deliveryId = null,
     ) {
+        $this->onQueue(config('queue.default_queue', 'default'));
     }
 
     public function handle(): void
     {
         $deliveryId = $this->deliveryId ?? (string) str()->uuid();
         $timestamp = (string) now()->timestamp;
-        $body = json_encode($this->payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $body = json_encode($this->payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
         $signature = 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $this->secret);
+
+        if (str($body)->isEmpty()) {
+            $body = '{}';
+        }
 
         $response = Http::timeout(10)
             ->withHeaders([

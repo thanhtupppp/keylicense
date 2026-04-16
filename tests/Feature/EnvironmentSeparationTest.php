@@ -3,13 +3,9 @@
 use App\Models\Environment;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    // Middleware is disabled per test suite to keep environment flows isolated.
-    $this->withoutMiddleware();
-});
+uses(TestCase::class, RefreshDatabase::class);
 
 test('client environment endpoint returns environment config for product', function (): void {
     $product = Product::query()->create([

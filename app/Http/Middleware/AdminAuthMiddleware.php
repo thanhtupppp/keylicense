@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\AdminToken;
 use App\Models\AdminUser;
 use App\Support\ApiResponse;
+use App\Support\RequestLogger;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,10 @@ class AdminAuthMiddleware
         $bearer = $request->bearerToken();
 
         if (! $bearer) {
+            RequestLogger::warning('Missing bearer token.', $request, [
+                'error_code' => 'UNAUTHORIZED',
+            ]);
+
             return ApiResponse::error('UNAUTHORIZED', 'Missing bearer token.', 401);
         }
 
@@ -28,6 +33,10 @@ class AdminAuthMiddleware
             ->first();
 
         if (! $adminToken instanceof AdminToken) {
+            RequestLogger::warning('Invalid bearer token.', $request, [
+                'error_code' => 'UNAUTHORIZED',
+            ]);
+
             return ApiResponse::error('UNAUTHORIZED', 'Invalid bearer token.', 401);
         }
 
@@ -37,6 +46,10 @@ class AdminAuthMiddleware
             ->first();
 
         if (! $admin) {
+            RequestLogger::warning('Inactive admin account for bearer token.', $request, [
+                'error_code' => 'UNAUTHORIZED',
+            ]);
+
             return ApiResponse::error('UNAUTHORIZED', 'Admin account is inactive.', 401);
         }
 

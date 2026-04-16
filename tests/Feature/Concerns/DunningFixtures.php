@@ -11,7 +11,7 @@ use App\Models\Subscription;
 
 final class DunningFixtures
 {
-    public static function seedPastDueSubscription(array $overrides = []): Subscription
+    public static function createPastDueSubscription(array $overrides = []): Subscription
     {
         $product = Product::query()->create([
             'code' => $overrides['product_code'] ?? 'prod-basic',
@@ -74,7 +74,7 @@ final class DunningFixtures
         return $subscription;
     }
 
-    public static function seedDunningConfig(int $step, string $action = DunningConfig::ACTION_EMAIL, ?string $productId = null): DunningConfig
+    public static function createDunningConfig(int $step, string $action = DunningConfig::ACTION_EMAIL, ?string $productId = null): DunningConfig
     {
         return DunningConfig::query()->create([
             'product_id' => $productId,
@@ -83,5 +83,15 @@ final class DunningFixtures
             'action' => $action,
             'email_template_code' => "dunning-step-{$step}",
         ]);
+    }
+
+    public static function seedPastDueSubscription(array $overrides = []): Subscription
+    {
+        return self::createPastDueSubscription($overrides);
+    }
+
+    public static function seedDunningConfig(int $step, string $action = DunningConfig::ACTION_EMAIL, ?string $productId = null): DunningConfig
+    {
+        return self::createDunningConfig($step, $action, $productId);
     }
 }

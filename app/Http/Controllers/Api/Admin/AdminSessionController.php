@@ -6,30 +6,44 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminLoginHistory;
 use App\Models\AdminToken;
 use App\Models\AdminUser;
+use App\Services\Billing\PlatformConfigService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class AdminSessionController extends Controller
 {
+    public function __construct(private readonly PlatformConfigService $platformConfigService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
-        /** @var AdminUser $admin */
-        $admin = $request->attributes->get('admin_user');
+        $admin = $this->admin($request);
         /** @var AdminToken|null $currentToken */
         $currentToken = $request->attributes->get('admin_token');
+
+        if (! $admin) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
+
+        $idleTimeoutMinutes = (int) $this->platformConfigService->get('admin_session_idle_timeout_min', config('admin_portal.idle_timeout_minutes', 30));
+        $idleCutoff = now()->subMinutes($idleTimeoutMinutes);
 
         $sessions = AdminToken::query()
             ->where('admin_user_id', $admin->id)
             ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
+            ->where('last_activity_at', '>=', $idleCutoff)
             ->orderByDesc('last_activity_at')
             ->get()
             ->map(function (AdminToken $token) use ($currentToken): array {
                 return [
                     'id' => $token->id,
+                    'device_key' => $token->device_key,
                     'ip_address' => $token->last_ip,
-                    'location' => null,
+                    'location' => $this->resolveLocation($token->last_ip),
                     'user_agent' => $token->last_user_agent,
                     'last_active_at' => $token->last_activity_at?->toISOString(),
                     'expires_at' => $token->expires_at?->toISOString(),
@@ -38,13 +52,21 @@ class AdminSessionController extends Controller
             })
             ->all();
 
-        return ApiResponse::success(['sessions' => $sessions]);
+        return ApiResponse::success([
+            'admin' => $this->adminPayload($admin),
+            'sessions' => $sessions,
+            'session_count' => count($sessions),
+            'current_session_id' => $currentToken?->id,
+        ]);
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
-        /** @var AdminUser $admin */
-        $admin = $request->attributes->get('admin_user');
+        $admin = $this->admin($request);
+
+        if (! $admin) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
 
         $token = AdminToken::query()
             ->where('admin_user_id', $admin->id)
@@ -63,10 +85,13 @@ class AdminSessionController extends Controller
 
     public function destroyOthers(Request $request): JsonResponse
     {
-        /** @var AdminUser $admin */
-        $admin = $request->attributes->get('admin_user');
+        $admin = $this->admin($request);
         /** @var AdminToken|null $currentToken */
         $currentToken = $request->attributes->get('admin_token');
+
+        if (! $admin) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
 
         $query = AdminToken::query()
             ->where('admin_user_id', $admin->id)
@@ -79,6 +104,11 @@ class AdminSessionController extends Controller
         $revokedCount = $query->update(['revoked_at' => now()]);
 
         return ApiResponse::success([
+            'admin' => [
+                'id' => $admin->id,
+                'email' => $admin->email,
+                'full_name' => $admin->full_name,
+            ],
             'revoked' => true,
             'revoked_count' => $revokedCount,
         ]);
@@ -86,8 +116,11 @@ class AdminSessionController extends Controller
 
     public function loginHistory(Request $request): JsonResponse
     {
-        /** @var AdminUser $admin */
-        $admin = $request->attributes->get('admin_user');
+        $admin = $this->admin($request);
+
+        if (! $admin) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
 
         $history = AdminLoginHistory::query()
             ->where('admin_id', $admin->id)
@@ -107,13 +140,20 @@ class AdminSessionController extends Controller
             })
             ->all();
 
-        return ApiResponse::success(['history' => $history]);
+        return ApiResponse::success([
+            'admin' => $this->adminPayload($admin),
+            'history' => $history,
+            'history_count' => count($history),
+        ]);
     }
 
     public function unlock(Request $request, string $userId): JsonResponse
     {
-        /** @var AdminUser $actor */
-        $actor = $request->attributes->get('admin_user');
+        $actor = $this->admin($request);
+
+        if (! $actor) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
 
         if ($actor->role !== 'super_admin') {
             return ApiResponse::error('FORBIDDEN', 'Only super admin can unlock accounts.', 403);
@@ -130,13 +170,19 @@ class AdminSessionController extends Controller
             'locked_until' => null,
         ])->save();
 
-        return ApiResponse::success(['unlocked' => true]);
+        return ApiResponse::success([
+            'admin' => $this->adminPayload($actor),
+            'unlocked' => true,
+        ]);
     }
 
     public function forceLogout(Request $request, string $userId): JsonResponse
     {
-        /** @var AdminUser $actor */
-        $actor = $request->attributes->get('admin_user');
+        $actor = $this->admin($request);
+
+        if (! $actor) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
 
         if ($actor->role !== 'super_admin') {
             return ApiResponse::error('FORBIDDEN', 'Only super admin can force logout users.', 403);
@@ -154,6 +200,7 @@ class AdminSessionController extends Controller
             ->update(['revoked_at' => now()]);
 
         return ApiResponse::success([
+            'admin' => $this->adminPayload($target),
             'revoked' => true,
             'revoked_count' => $revokedCount,
         ]);
@@ -161,8 +208,11 @@ class AdminSessionController extends Controller
 
     public function listUserSessions(Request $request, string $userId): JsonResponse
     {
-        /** @var AdminUser $actor */
-        $actor = $request->attributes->get('admin_user');
+        $actor = $this->admin($request);
+
+        if (! $actor) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
 
         if ($actor->role !== 'super_admin') {
             return ApiResponse::error('FORBIDDEN', 'Only super admin can view other sessions.', 403);
@@ -174,14 +224,18 @@ class AdminSessionController extends Controller
             return ApiResponse::error('ADMIN_NOT_FOUND', 'Admin user not found.', 404);
         }
 
+        $idleTimeoutMinutes = (int) $this->platformConfigService->get('admin_session_idle_timeout_min', config('admin_portal.idle_timeout_minutes', 30));
+
         $sessions = AdminToken::query()
             ->where('admin_user_id', $target->id)
             ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
+            ->where('last_activity_at', '>=', now()->subMinutes($idleTimeoutMinutes))
             ->orderByDesc('last_activity_at')
             ->get()
             ->map(static fn (AdminToken $token): array => [
                 'id' => $token->id,
+                'device_key' => $token->device_key,
                 'ip_address' => $token->last_ip,
                 'location' => null,
                 'user_agent' => $token->last_user_agent,
@@ -190,6 +244,31 @@ class AdminSessionController extends Controller
             ])
             ->all();
 
-        return ApiResponse::success(['sessions' => $sessions]);
+        return ApiResponse::success([
+            'admin' => $this->adminPayload($target),
+            'sessions' => $sessions,
+            'session_count' => count($sessions),
+        ]);
+    }
+
+    private function admin(Request $request): ?AdminUser
+    {
+        $admin = $request->attributes->get('admin_user') ?? $request->user('admin') ?? $request->user();
+
+        return $admin instanceof AdminUser ? $admin : null;
+    }
+
+    private function adminPayload(AdminUser $admin): array
+    {
+        return [
+            'id' => $admin->id,
+            'email' => $admin->email,
+            'full_name' => $admin->full_name,
+        ];
+    }
+
+    private function resolveLocation(?string $ipAddress): ?string
+    {
+        return $ipAddress ? 'Unknown' : null;
     }
 }

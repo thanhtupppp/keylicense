@@ -1,18 +1,10 @@
 <?php
 
 use App\Models\Customer;
-use App\Models\NotificationPreference;
-use App\Models\Plan;
-use App\Models\Product;
-use App\Models\Refund;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    // Middleware is disabled per test suite to keep feature flows focused.
-    $this->withoutMiddleware();
-});
+uses(TestCase::class, RefreshDatabase::class);
 
 test('admin can create refund record', function (): void {
     $response = $this->postJson('/api/v1/admin/orders/order-123/refund', [

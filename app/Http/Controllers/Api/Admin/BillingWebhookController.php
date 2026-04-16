@@ -6,20 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\DunningLog;
 use App\Models\LicenseKey;
 use App\Models\Subscription;
+use App\Services\Billing\DunningOrchestrator;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BillingWebhookController extends Controller
 {
+    public function __construct(private readonly DunningOrchestrator $orchestrator)
+    {
+    }
+
     public function paymentFailed(Request $request): JsonResponse
     {
         $subscription = Subscription::query()->findOrFail($request->input('subscription_id'));
-        $subscription->update(['status' => 'past_due']);
+        $this->orchestrator->handlePaymentFailed($subscription);
 
         DunningLog::query()->create([
             'subscription_id' => $subscription->id,
-            'step' => 1,
+            'step' => 0,
             'action' => 'payment_failed',
             'executed_at' => now(),
             'result' => 'queued',
@@ -29,16 +34,14 @@ class BillingWebhookController extends Controller
         return ApiResponse::success([
             'processed' => true,
             'status' => 'past_due',
+            'subscription_id' => $subscription->id,
         ]);
     }
 
     public function paymentSucceeded(Request $request): JsonResponse
     {
         $subscription = Subscription::query()->findOrFail($request->input('subscription_id'));
-        $subscription->update([
-            'status' => 'active',
-            'cancel_at_period_end' => false,
-        ]);
+        $this->orchestrator->handlePaymentSucceeded($subscription);
 
         LicenseKey::query()
             ->where('entitlement_id', $subscription->entitlement_id)
@@ -46,7 +49,7 @@ class BillingWebhookController extends Controller
 
         DunningLog::query()->create([
             'subscription_id' => $subscription->id,
-            'step' => 1,
+            'step' => 0,
             'action' => 'payment_recovered',
             'executed_at' => now(),
             'result' => 'recovered',
@@ -56,6 +59,7 @@ class BillingWebhookController extends Controller
         return ApiResponse::success([
             'processed' => true,
             'status' => 'active',
+            'subscription_id' => $subscription->id,
         ]);
     }
 }

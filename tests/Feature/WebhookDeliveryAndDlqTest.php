@@ -5,12 +5,11 @@ use App\Models\FailedJobEntry;
 use App\Models\WebhookDelivery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Tests\Feature\Concerns\AdminAuthFixtures;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    $this->withoutMiddleware();
-});
+uses(TestCase::class, RefreshDatabase::class);
 
 test('webhook delivery job stores delivery metadata', function (): void {
     Http::fake([
@@ -32,8 +31,9 @@ test('webhook delivery job stores delivery metadata', function (): void {
 });
 
 test('dlq api lists failed jobs', function (): void {
+    $admin = AdminAuthFixtures::createAdmin();
     FailedJobEntry::query()->create([
-        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+        'uuid' => (string) Str::uuid(),
         'connection' => 'redis',
         'queue' => 'default',
         'payload' => '{}',
@@ -41,7 +41,8 @@ test('dlq api lists failed jobs', function (): void {
         'failed_at' => now(),
     ]);
 
-    $this->getJson('/api/v1/admin/jobs/dlq')
+    $this->withHeaders(AdminAuthFixtures::authHeaders($admin))
+        ->getJson('/api/v1/admin/jobs/dlq')
         ->assertSuccessful()
         ->assertJsonPath('data.jobs.0.exception', 'boom');
 });

@@ -3,24 +3,21 @@
 use App\Models\DunningConfig;
 use App\Models\DunningLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use function Pest\Laravel\postJson;
+use Tests\Feature\Concerns\AdminAuthFixtures;
 use Tests\Feature\Concerns\DunningFixtures;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function (): void {
-    // Middleware is disabled per test suite to keep controller tests isolated.
-    $this->withoutMiddleware();
-});
+uses(Tests\TestCase::class, RefreshDatabase::class);
 
 test('payment failed webhook schedules dunning steps', function (): void {
-    $subscription = DunningFixtures::seedPastDueSubscription();
-    DunningFixtures::seedDunningConfig(1);
-    DunningFixtures::seedDunningConfig(3);
+    $admin = AdminAuthFixtures::createAdmin();
+    $subscription = DunningFixtures::createPastDueSubscription();
+    DunningFixtures::createDunningConfig(1);
+    DunningFixtures::createDunningConfig(3);
 
-    $this->postJson('/api/v1/admin/billing-webhooks/payment-failed', [
-        'subscription_id' => $subscription->id,
-    ])->assertSuccessful()
+    $this->withHeaders(AdminAuthFixtures::authHeaders($admin))
+        ->postJson('/api/v1/admin/billing-webhooks/payment-failed', [
+            'subscription_id' => $subscription->id,
+        ])->assertSuccessful()
       ->assertJsonPath('data.status', 'past_due');
 
     $this->assertDatabaseHas('subscriptions', [
@@ -30,11 +27,13 @@ test('payment failed webhook schedules dunning steps', function (): void {
 });
 
 test('recovers subscription on payment success webhook', function (): void {
-    $subscription = DunningFixtures::seedPastDueSubscription();
+    $admin = AdminAuthFixtures::createAdmin();
+    $subscription = DunningFixtures::createPastDueSubscription();
 
-    postJson('/api/v1/admin/billing-webhooks/payment-succeeded', [
-        'subscription_id' => $subscription->id,
-    ])->assertSuccessful();
+    $this->withHeaders(AdminAuthFixtures::authHeaders($admin))
+        ->postJson('/api/v1/admin/billing-webhooks/payment-succeeded', [
+            'subscription_id' => $subscription->id,
+        ])->assertSuccessful();
 
     $this->assertDatabaseHas('subscriptions', [
         'id' => $subscription->id,
@@ -55,7 +54,8 @@ test('recovers subscription on payment success webhook', function (): void {
 });
 
 test('returns dunning report grouped by product and subscription', function (): void {
-    $subscription = DunningFixtures::seedPastDueSubscription();
+    $admin = AdminAuthFixtures::createAdmin();
+    $subscription = DunningFixtures::createPastDueSubscription();
 
     DunningLog::query()->create([
         'subscription_id' => $subscription->id,
@@ -66,7 +66,8 @@ test('returns dunning report grouped by product and subscription', function (): 
         'notes' => null,
     ]);
 
-    $this->getJson('/api/v1/admin/reports/dunning')
+    $this->withHeaders(AdminAuthFixtures::authHeaders($admin))
+        ->getJson('/api/v1/admin/reports/dunning')
         ->assertSuccessful()
         ->assertJsonStructure([
             'data' => [

@@ -2,14 +2,17 @@
 
 namespace App\Jobs;
 
+use App\Models\Subscription;
+use App\Services\Billing\DunningOrchestrator;
 use App\Services\Billing\DunningService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunDunningStepJob implements ShouldQueue
+class RunDunningStepJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -20,17 +23,37 @@ class RunDunningStepJob implements ShouldQueue
 
     public int $tries = 3;
 
-    /**
-     * @param int $step 1..N
-     */
+    public int $uniqueFor = 3600;
+
     public function __construct(
+        public string $subscriptionId,
         public int $step,
-        public ?string $productId = null,
+        public int $version = 1,
     ) {
     }
 
-    public function handle(DunningService $service): void
+    public function uniqueId(): string
     {
-        $service->runStep($this->step, $this->productId);
+        return "{$this->subscriptionId}:{$this->step}:{$this->version}";
+    }
+
+    public function jobId(): string
+    {
+        return $this->uniqueId();
+    }
+
+    public function handle(DunningService $service, DunningOrchestrator $orchestrator): void
+    {
+        if (! $orchestrator->isScheduleCurrent($this->subscriptionId, $this->version)) {
+            return;
+        }
+
+        $subscription = Subscription::query()->find($this->subscriptionId);
+
+        if (! $subscription) {
+            return;
+        }
+
+        $service->runStep($this->step, $subscription->entitlement?->plan?->product_id);
     }
 }

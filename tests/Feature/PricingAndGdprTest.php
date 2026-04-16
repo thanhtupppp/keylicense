@@ -1,33 +1,17 @@
 <?php
 
 use App\Models\Customer;
-use App\Models\DataRequest;
 use App\Models\DataRetentionPolicy;
-use App\Models\Plan;
-use App\Models\Product;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+uses(TestCase::class, RefreshDatabase::class);
 
 beforeEach(function (): void {
-    if (! Schema::hasTable('data_requests')) {
-        Schema::create('data_requests', function (\Illuminate\Database\Schema\Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('customer_id')->nullable();
-            $table->string('request_type', 32);
-            $table->string('status', 32)->default('pending');
-            $table->timestampTz('requested_at')->nullable();
-            $table->timestampTz('completed_at')->nullable();
-            $table->text('export_url')->nullable();
-            $table->text('notes')->nullable();
-            $table->uuid('processed_by')->nullable();
-            $table->timestamps();
-        });
-    }
-
     if (! Schema::hasTable('data_retention_policies')) {
-        Schema::create('data_retention_policies', function (\Illuminate\Database\Schema\Blueprint $table): void {
+        Schema::create('data_retention_policies', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('data_type', 64)->unique();
             $table->unsignedInteger('retention_days');
@@ -36,9 +20,6 @@ beforeEach(function (): void {
             $table->timestampTz('updated_at')->nullable();
         });
     }
-
-    // Middleware is disabled per test suite to keep feature flows focused.
-    $this->withoutMiddleware();
 });
 
 test('customer can request data erasure and anonymize profile', function (): void {

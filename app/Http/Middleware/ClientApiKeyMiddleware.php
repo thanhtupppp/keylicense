@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\ApiKey;
 use App\Support\ApiResponse;
+use App\Support\RequestLogger;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,6 +16,10 @@ class ClientApiKeyMiddleware
         $key = $request->header('X-API-Key');
 
         if (! $key) {
+            RequestLogger::warning('Missing X-API-Key header.', $request, [
+                'error_code' => 'UNAUTHORIZED',
+            ]);
+
             return ApiResponse::error('UNAUTHORIZED', 'Missing X-API-Key header.', 401);
         }
 
@@ -24,6 +29,10 @@ class ClientApiKeyMiddleware
             ->first();
 
         if (! $apiKey) {
+            RequestLogger::warning('Invalid API key.', $request, [
+                'error_code' => 'UNAUTHORIZED',
+            ]);
+
             return ApiResponse::error('UNAUTHORIZED', 'Invalid API key.', 401);
         }
 
