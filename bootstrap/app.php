@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminAuthMiddleware;
 use App\Http\Middleware\AdminPortalSessionAuth;
 use App\Http\Middleware\ClientApiKeyMiddleware;
+use App\Http\Middleware\AdminRoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin.auth' => AdminAuthMiddleware::class,
+            'admin.role' => AdminRoleMiddleware::class,
             'client.api-key' => ClientApiKeyMiddleware::class,
             'admin.portal.auth' => AdminPortalSessionAuth::class,
         ]);

@@ -39,15 +39,9 @@ class ApiKeyController extends Controller
             'is_active' => true,
         ]);
 
-        ApiKeyAuditLog::query()->create([
-            'api_key_id' => $apiKey->id,
-            'action' => 'issue',
-            'actor_admin_user_id' => $actor->id,
-            'metadata' => [
-                'scope' => $apiKey->scope,
-                'name' => $apiKey->name,
-            ],
-            'created_at' => now(),
+        $this->audit($apiKey->id, 'issue', $actor->id, [
+            'scope' => $apiKey->scope,
+            'name' => $apiKey->name,
         ]);
 
         return ApiResponse::success([
@@ -85,15 +79,9 @@ class ApiKeyController extends Controller
             'is_active' => true,
         ])->save();
 
-        ApiKeyAuditLog::query()->create([
-            'api_key_id' => $apiKey->id,
-            'action' => 'rotate',
-            'actor_admin_user_id' => $actor->id,
-            'metadata' => [
-                'scope' => $apiKey->scope,
-                'name' => $apiKey->name,
-            ],
-            'created_at' => now(),
+        $this->audit($apiKey->id, 'rotate', $actor->id, [
+            'scope' => $apiKey->scope,
+            'name' => $apiKey->name,
         ]);
 
         return ApiResponse::success([
@@ -127,15 +115,9 @@ class ApiKeyController extends Controller
 
         $apiKey->forceFill(['is_active' => false])->save();
 
-        ApiKeyAuditLog::query()->create([
-            'api_key_id' => $apiKey->id,
-            'action' => 'revoke',
-            'actor_admin_user_id' => $actor->id,
-            'metadata' => [
-                'scope' => $apiKey->scope,
-                'name' => $apiKey->name,
-            ],
-            'created_at' => now(),
+        $this->audit($apiKey->id, 'revoke', $actor->id, [
+            'scope' => $apiKey->scope,
+            'name' => $apiKey->name,
         ]);
 
         return ApiResponse::success([
@@ -153,5 +135,16 @@ class ApiKeyController extends Controller
         $admin = $request->attributes->get('admin_user') ?? $request->user('admin') ?? $request->user();
 
         return $admin instanceof AdminUser ? $admin : null;
+    }
+
+    private function audit(string $apiKeyId, string $action, string $actorAdminUserId, array $metadata): void
+    {
+        ApiKeyAuditLog::query()->create([
+            'api_key_id' => $apiKeyId,
+            'action' => $action,
+            'actor_admin_user_id' => $actorAdminUserId,
+            'metadata' => $metadata,
+            'created_at' => now(),
+        ]);
     }
 }

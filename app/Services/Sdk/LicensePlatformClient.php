@@ -2,187 +2,216 @@
 
 namespace App\Services\Sdk;
 
-use App\Services\Sdk\Contracts\LicensePlatformClientInterface;
-use App\Services\Sdk\Dto\ActivationResult;
-use App\Services\Sdk\Dto\ChallengeResult;
-use App\Services\Sdk\Dto\CouponResult;
-use App\Services\Sdk\Dto\HeartbeatResult;
-use App\Services\Sdk\Dto\UpdateResult;
-use App\Services\Sdk\Dto\UsageResult;
-use App\Services\Sdk\Dto\ValidationResult;
-use App\Services\Sdk\Support\EndpointMapper;
-use App\Services\Sdk\Support\ErrorMapper;
-use App\Services\Sdk\Support\RequestBuilder;
-use App\Services\Sdk\Support\ResponseMapper;
-use App\Services\Sdk\Support\RetryPolicy;
-use App\Services\Sdk\Support\SdkCache;
-use App\Services\Sdk\Support\SdkConfig;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
+use App\Services\Sdk\Exceptions\LicensePlatformException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
-class LicensePlatformClient implements LicensePlatformClientInterface
+class LicensePlatformClient
 {
-    private SdkConfig $config;
-
-    private RequestBuilder $requestBuilder;
-
-    private SdkCache $cache;
-
-    private ErrorMapper $errorMapper;
-
-    private EndpointMapper $endpointMapper;
-
-    private ResponseMapper $responseMapper;
-
-    public function __construct(array $config = [])
-    {
-        $this->config = new SdkConfig(
-            baseUrl: rtrim((string) ($config['base_url'] ?? ''), '/'),
-            apiKey: (string) ($config['api_key'] ?? ''),
-            productCode: (string) ($config['product_code'] ?? ''),
-            environment: (string) ($config['environment'] ?? 'production'),
-            timeout: (int) ($config['timeout'] ?? 10),
-            retry: new RetryPolicy(
-                maxAttempts: (int) ($config['retry_attempts'] ?? 2),
-                delays: $config['retry_delays'] ?? [250, 500]
-            ),
-            cacheDriver: (string) ($config['cache_driver'] ?? 'file'),
-            cachePath: $config['cache_path'] ?? null,
-            cacheTtl: (int) ($config['cache_ttl'] ?? 86400),
-            logChannel: $config['log_channel'] ?? 'stderr',
-        );
-
-        $this->requestBuilder = new RequestBuilder($this->config);
-        $this->cache = new SdkCache();
-        $this->errorMapper = new ErrorMapper();
-        $this->endpointMapper = new EndpointMapper();
-        $this->responseMapper = new ResponseMapper();
+    public function __construct(
+        private readonly string $baseUrl,
+        private readonly ?string $apiKey = null,
+        private readonly ?string $productCode = null,
+        private readonly int $timeout = 10,
+        private readonly int $retryAttempts = 3,
+    ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
-    public function activate(string $licenseKey, string $domain, array $device): ActivationResult
+    public function activate(string $licenseKey, string $domain, array $device = []): object
     {
-        return $this->responseMapper->activation($this->post('activate', [
+        $response = $this->request('post', '/v1/client/licenses/activate', [
             'license_key' => $licenseKey,
+            'product_code' => $this->productCode,
             'domain' => $domain,
             'device' => $device,
-        ], $this->requestBuilder->idempotencyHeaders()));
-    }
-
-    public function validate(string $licenseKey, string $activationId, string $domain): ValidationResult
-    {
-        $cacheKey = $this->cacheKey('validate', compact('licenseKey', 'activationId', 'domain'));
-
-        return $this->cache->remember($cacheKey, 300, function () use ($licenseKey, $activationId, $domain): ValidationResult {
-            return $this->responseMapper->validation($this->post('validate', [
-                'license_key' => $licenseKey,
-                'activation_id' => $activationId,
-                'domain' => $domain,
-            ]));
-        });
-    }
-
-    public function heartbeat(string $activationId, string $licenseKey, string $domain): HeartbeatResult
-    {
-        return $this->responseMapper->heartbeat($this->post('heartbeat', [
-            'activation_id' => $activationId,
-            'license_key' => $licenseKey,
-            'domain' => $domain,
-        ], $this->requestBuilder->correlationHeaders()));
-    }
-
-    public function deactivate(string $activationId, string $licenseKey, string $reason): bool
-    {
-        $this->post('deactivate', [
-            'activation_id' => $activationId,
-            'license_key' => $licenseKey,
-            'reason' => $reason,
         ]);
 
-        return true;
+        return $this->mapActivation($response);
     }
 
-    public function checkUpdate(string $licenseKey, string $currentVersion, string $domain): UpdateResult
+    public function validate(string $licenseKey, string $activationId, string $domain): object
     {
-        $cacheKey = $this->cacheKey('checkUpdate', compact('licenseKey', 'currentVersion', 'domain'));
-
-        return $this->cache->remember($cacheKey, 3600, function () use ($licenseKey, $currentVersion, $domain): UpdateResult {
-            return $this->responseMapper->update($this->post('checkUpdate', [
-                'license_key' => $licenseKey,
-                'current_version' => $currentVersion,
-                'domain' => $domain,
-            ], $this->requestBuilder->correlationHeaders()));
-        });
-    }
-
-    public function requestOfflineChallenge(string $licenseKey, string $domain, array $device): ChallengeResult
-    {
-        return $this->responseMapper->challenge($this->post('requestOfflineChallenge', [
+        $response = $this->request('post', '/v1/client/licenses/validate', [
             'license_key' => $licenseKey,
+            'product_code' => $this->productCode,
+            'activation_id' => $activationId,
+            'domain' => $domain,
+        ]);
+
+        return $this->mapValidation($response);
+    }
+
+    public function heartbeat(string $activationId, string $licenseKey, string $domain): object
+    {
+        $response = $this->request('post', '/v1/client/licenses/heartbeat', [
+            'license_key' => $licenseKey,
+            'activation_id' => $activationId,
+            'domain' => $domain,
+        ], ['X-Correlation-Id' => (string) Str::uuid()]);
+
+        return $this->mapHeartbeat($response);
+    }
+
+    public function checkUpdate(string $licenseKey, string $currentVersion, string $domain): object
+    {
+        $response = $this->request('post', '/v1/client/licenses/update-check', [
+            'license_key' => $licenseKey,
+            'product_code' => $this->productCode,
+            'current_version' => $currentVersion,
+            'domain' => $domain,
+        ]);
+
+        return $this->mapUpdateCheck($response);
+    }
+
+    public function requestOfflineChallenge(string $licenseKey, string $domain, array $device = []): object
+    {
+        $response = $this->request('post', '/v1/client/licenses/offline/challenge', [
+            'license_key' => $licenseKey,
+            'product_code' => $this->productCode,
             'domain' => $domain,
             'device' => $device,
-        ], $this->requestBuilder->idempotencyHeaders()));
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        return $this->mapOfflineChallenge($response);
     }
 
-    public function confirmOfflineActivation(string $challengeId, string $responseToken): ActivationResult
+    public function recordUsage(string $licenseKey, string $metric, int $quantity, string $idempotencyKey): object
     {
-        return $this->responseMapper->activation($this->post('confirmOfflineActivation', [
-            'challenge_id' => $challengeId,
-            'response_token' => $responseToken,
-        ], $this->requestBuilder->correlationHeaders()));
-    }
-
-    public function recordUsage(string $licenseKey, string $metricCode, int $quantity, string $idempotencyKey): UsageResult
-    {
-        return $this->responseMapper->usage($this->post('recordUsage', [
+        $response = $this->request('post', '/v1/client/usage/records', [
             'license_key' => $licenseKey,
-            'metric_code' => $metricCode,
+            'product_code' => $this->productCode,
+            'metric' => $metric,
             'quantity' => $quantity,
-            'idempotency_key' => $idempotencyKey,
-        ], $this->requestBuilder->idempotencyHeaders($idempotencyKey, [
-            'X-Correlation-Id' => $idempotencyKey,
-        ])));
+        ], ['Idempotency-Key' => $idempotencyKey]);
+
+        return $this->mapUsage($response);
     }
 
-    public function validateCoupon(string $couponCode, string $planCode): CouponResult
+    public function validateCoupon(string $couponCode, string $planCode): object
     {
-        $cacheKey = $this->cacheKey('validateCoupon', compact('couponCode', 'planCode'));
+        $response = $this->request('post', '/v1/client/coupons/validate', [
+            'coupon_code' => $couponCode,
+            'plan_code' => $planCode,
+        ]);
 
-        return $this->cache->remember($cacheKey, 3600, function () use ($couponCode, $planCode): CouponResult {
-            return $this->responseMapper->coupon($this->post('validateCoupon', [
-                'coupon_code' => $couponCode,
-                'plan_code' => $planCode,
-            ], $this->requestBuilder->correlationHeaders()), $couponCode, $planCode);
-        });
+        return $this->mapCoupon($response);
     }
 
-    private function post(string $endpoint, array $payload, array $headers = []): array
+    private function request(string $method, string $path, array $payload = [], array $headers = []): SdkResponse
     {
-        $path = $this->endpointMapper->path($endpoint);
-        $response = $this->http()
-            ->withHeaders($this->requestBuilder->headers($headers))
-            ->retry($this->config->retry->maxAttempts, $this->config->retry->laravelRetry())
-            ->post($this->config->baseUrl.$path, $payload);
+        try {
+            $request = $this->http()->withHeaders($headers);
+            $response = $request->{$method}($this->baseUrl.$path, $payload);
 
-        if ($response->failed()) {
-            $this->errorMapper->throw(
+            if ($response->successful()) {
+                return SdkResponse::success($response->json('data') ?? []);
+            }
+
+            return SdkResponse::failure(
                 $response->status(),
-                $response->json('error_code'),
-                $response->json('message'),
-                $response->json() ?? []
+                $this->mapErrorCode($response->json('error_code') ?? $response->json('code')),
+                $response->json('message') ?? 'Request failed.'
             );
+        } catch (ConnectionException $e) {
+            return SdkResponse::failure(0, 'CONNECTION_ERROR', $e->getMessage());
+        } catch (RequestException $e) {
+            return SdkResponse::failure($e->response?->status() ?? 0, 'HTTP_ERROR', $e->getMessage());
         }
-
-        return $response->json() ?? [];
     }
 
     private function http(): PendingRequest
     {
-        return Http::timeout($this->config->timeout)
-            ->connectTimeout(min(5, $this->config->timeout));
+        $request = Http::acceptJson()
+            ->asJson()
+            ->timeout($this->timeout)
+            ->connectTimeout(max(1, min($this->timeout, 5)))
+            ->retry($this->retryAttempts, 250, throw: false);
+
+        if ($this->apiKey) {
+            $request = $request->withHeaders(['X-API-Key' => $this->apiKey]);
+        }
+
+        return $request;
     }
 
-    private function cacheKey(string $endpoint, array $payload): string
+    private function mapActivation(SdkResponse $response): object
     {
-        return 'sdk:'.sha1($endpoint.'|'.json_encode($payload));
+        $data = $response->data;
+
+        return (object) [
+            'activationId' => $data['activation_id'] ?? null,
+            'status' => $data['status'] ?? null,
+        ];
+    }
+
+    private function mapValidation(SdkResponse $response): object
+    {
+        $data = $response->data;
+
+        return (object) [
+            'valid' => (bool) ($data['valid'] ?? false),
+            'status' => $data['status'] ?? null,
+        ];
+    }
+
+    private function mapHeartbeat(SdkResponse $response): object
+    {
+        $data = $response->data;
+
+        return (object) [
+            'accepted' => (bool) ($data['accepted'] ?? false),
+            'nextHeartbeatAt' => $data['next_heartbeat_at'] ?? null,
+        ];
+    }
+
+    private function mapUpdateCheck(SdkResponse $response): object
+    {
+        $data = $response->data;
+
+        return (object) [
+            'updateAvailable' => (bool) ($data['update_available'] ?? false),
+        ];
+    }
+
+    private function mapOfflineChallenge(SdkResponse $response): object
+    {
+        $data = $response->data;
+
+        return (object) [
+            'challengeId' => $data['challenge_id'] ?? null,
+            'expiresAt' => $data['expires_at'] ?? null,
+        ];
+    }
+
+    private function mapUsage(SdkResponse $response): object
+    {
+        $data = $response->data;
+
+        return (object) [
+            'recorded' => (bool) ($data['recorded'] ?? false),
+            'totalUsage' => $data['total_usage'] ?? null,
+            'overLimit' => (bool) ($data['over_limit'] ?? false),
+        ];
+    }
+
+    private function mapCoupon(SdkResponse $response): object
+    {
+        $data = $response->data;
+
+        return (object) [
+            'valid' => (bool) ($data['valid'] ?? false),
+            'couponCode' => $data['coupon_code'] ?? null,
+            'planCode' => $data['plan_code'] ?? null,
+        ];
+    }
+
+    private function mapErrorCode(mixed $code): string
+    {
+        return is_string($code) && $code !== '' ? $code : 'SDK_ERROR';
     }
 }

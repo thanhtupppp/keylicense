@@ -1,7 +1,6 @@
 <?php
 
 use App\Services\Sdk\LicensePlatformClient;
-use App\Services\Sdk\Exceptions\LicensePlatformException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Activation;
+use App\Models\AdminUser;
 use App\Models\Entitlement;
 use App\Models\LicenseKey;
 use App\Support\ApiResponse;
@@ -14,6 +16,12 @@ class LicenseController extends Controller
 {
     public function issue(Request $request): JsonResponse
     {
+        $actor = $this->admin($request);
+
+        if (! $actor) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
+
         $payload = $request->validate([
             'entitlement_id' => ['required', 'uuid', 'exists:entitlements,id'],
             'quantity' => ['required', 'integer', 'min:1', 'max:100'],
@@ -39,15 +47,102 @@ class LicenseController extends Controller
                 'expires_at' => $entitlement->expires_at,
             ]);
 
-            $licenses[] = [
-                'id' => $license->id,
-                'license_key' => $raw,
-                'key_display' => $license->key_display,
-                'status' => $license->status,
-                'expires_at' => optional($license->expires_at)?->toISOString(),
-            ];
+            $licenses[] = $this->formatLicense($license, $raw);
         }
 
         return ApiResponse::success(['licenses' => $licenses], 201);
+    }
+
+    public function history(string $licenseId): JsonResponse
+    {
+        $license = LicenseKey::query()->findOrFail($licenseId);
+
+        $activations = Activation::query()
+            ->where('license_id', $license->id)
+            ->orderByDesc('last_validated_at')
+            ->get()
+            ->map(static fn (Activation $activation): array => [
+                'id' => $activation->id,
+                'activation_code' => $activation->activation_code,
+                'product_code' => $activation->product_code,
+                'domain' => $activation->domain,
+                'environment' => $activation->environment,
+                'status' => $activation->status,
+                'activated_at' => $activation->activated_at?->toISOString(),
+                'last_validated_at' => $activation->last_validated_at?->toISOString(),
+            ])
+            ->all();
+
+        return ApiResponse::success([
+            'license' => [
+                'id' => $license->id,
+                'key_display' => $license->key_display,
+            ],
+            'activations' => $activations,
+            'activation_count' => count($activations),
+        ]);
+    }
+
+    public function revoke(string $id): JsonResponse
+    {
+        return $this->updateStatus($id, 'revoked');
+    }
+
+    public function suspend(string $id): JsonResponse
+    {
+        return $this->updateStatus($id, 'suspended');
+    }
+
+    public function unsuspend(string $id): JsonResponse
+    {
+        return $this->updateStatus($id, 'active');
+    }
+
+    public function extend(Request $request, string $id): JsonResponse
+    {
+        $payload = $request->validate([
+            'days' => ['required', 'integer', 'min:1', 'max:3650'],
+        ]);
+
+        $license = LicenseKey::query()->findOrFail($id);
+        $license->forceFill([
+            'expires_at' => $license->expires_at
+                ? $license->expires_at->copy()->addDays((int) $payload['days'])
+                : now()->addDays((int) $payload['days']),
+        ])->save();
+
+        return ApiResponse::success([
+            'license' => $this->formatLicense($license->fresh()),
+        ]);
+    }
+
+    private function updateStatus(string $id, string $status): JsonResponse
+    {
+        $license = LicenseKey::query()->findOrFail($id);
+        $license->forceFill(['status' => $status])->save();
+
+        return ApiResponse::success([
+            'license' => $this->formatLicense($license->fresh()),
+        ]);
+    }
+
+    private function admin(Request $request): ?AdminUser
+    {
+        $admin = $request->attributes->get('admin_user') ?? $request->user('admin') ?? $request->user();
+
+        return $admin instanceof AdminUser ? $admin : null;
+    }
+
+    private function formatLicense(LicenseKey $license, ?string $plainTextKey = null): array
+    {
+        $data = [
+            'id' => $license->id,
+            'license_key' => $plainTextKey,
+            'key_display' => $license->key_display,
+            'status' => $license->status,
+            'expires_at' => optional($license->expires_at)?->toISOString(),
+        ];
+
+        return array_filter($data, static fn ($value) => $value !== null);
     }
 }

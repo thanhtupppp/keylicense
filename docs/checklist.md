@@ -8,7 +8,7 @@ Infrastructure
 
 - [x] Đồng bộ .env.example, config, queue, cache theo chuẩn production
 
-- [ ] Chuẩn hóa error handler/logging structure
+- [x] Chuẩn hóa error handler/logging structure
       Auth
 
 - [x] Hoàn thiện flow admin login end-to-end
@@ -20,65 +20,65 @@ Infrastructure
 - [x] Chuẩn hóa payload login/session giữa controller và service
       API Key Mgmt
 
-- [ ] Hoàn thiện issue/revoke/rotate API key
+- [x] Hoàn thiện issue/revoke/rotate API key
 
-- [ ] Thêm audit log cho mọi thao tác write
+- [x] Thêm audit log cho mọi thao tác write
 
-- [ ] Rà lại authorization cho từng role
+- [x] Rà lại authorization cho từng role
       Sprint 2 — Catalog, Entitlement, License, Activation
       Catalog
 
-- [ ] Hoàn thiện CRUD đầy đủ cho Product
+- [x] Hoàn thiện CRUD đầy đủ cho Product
 
-- [ ] Hoàn thiện CRUD đầy đủ cho Plan
+- [x] Hoàn thiện CRUD đầy đủ cho Plan
 
-- [ ] Hoàn thiện ProductVersion
+- [x] Hoàn thiện ProductVersion
 
-- [ ] Hoàn thiện Feature / PlanFeature
+- [x] Hoàn thiện Feature / PlanFeature
       Entitlement
 
-- [ ] Hoàn thiện tạo entitlement từ order/customer
+- [x] Hoàn thiện tạo entitlement từ order/customer
 
-- [ ] Rà lại trạng thái entitlement và rule chuyển trạng thái
+- [x] Rà lại trạng thái entitlement và rule chuyển trạng thái
 
-- [ ] Bổ sung query/filter/listing cho admin
+- [x] Bổ sung query/filter/listing cho admin
       License
 
-- [ ] Hoàn thiện issue license từ entitlement
+- [x] Hoàn thiện issue license từ entitlement
 
-- [ ] Hoàn thiện revoke/suspend/unsuspend/extend
+- [x] Hoàn thiện revoke/suspend/unsuspend/extend
 
-- [ ] Chuẩn hóa response structure và error codes
+- [x] Chuẩn hóa response structure và error codes
       Activation
 
-- [ ] Hoàn thiện activate flow
+- [x] Hoàn thiện activate flow
 
-- [ ] Hoàn thiện validate flow
+- [x] Hoàn thiện validate flow
 
-- [ ] Bổ sung heartbeat
+- [x] Bổ sung heartbeat
 
-- [ ] Hoàn thiện deactivate
+- [x] Hoàn thiện deactivate
 
-- [ ] Rà lại state machine activation
+- [x] Rà lại state machine activation
       Sprint 3 — Admin Portal v1, SDK PHP v1
       Admin Portal v1
 
-- [ ] Hoàn thiện list/search/filter product
+- [x] Hoàn thiện list/search/filter product
 
-- [ ] Hoàn thiện issue key từ portal
+- [x] Hoàn thiện issue key từ portal
 
-- [ ] Hoàn thiện xem activation history
+- [x] Hoàn thiện xem activation history
 
-- [ ] Đồng bộ quyền truy cập theo role
+- [x] Đồng bộ quyền truy cập theo role
       SDK PHP v1
 
-- [ ] Hoàn thiện HTTP client layer
+- [x] Hoàn thiện HTTP client layer
 
-- [ ] Bổ sung retry/timeout/error mapping
+- [x] Bổ sung retry/timeout/error mapping
 
-- [ ] Hoàn thiện DTO response mapping
+- [x] Hoàn thiện DTO response mapping
 
-- [ ] Thêm test cho các endpoint cốt lõi
+- [x] Thêm test cho các endpoint cốt lõi
       Sprint 4 — Foundation hardening / Admin portal completion
       Missing items
 

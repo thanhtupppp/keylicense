@@ -130,6 +130,18 @@ class LicenseClientController extends Controller
             return ApiResponse::error('ACTIVATION_NOT_FOUND', 'Activation not found.', 403);
         }
 
+        if ($license->status === 'revoked') {
+            return ApiResponse::error('LICENSE_REVOKED', 'License key has been revoked.', 403);
+        }
+
+        if ($license->status === 'suspended') {
+            return ApiResponse::error('LICENSE_SUSPENDED', 'License key is suspended.', 403);
+        }
+
+        if ($activation->status === 'deactivated') {
+            return ApiResponse::error('ACTIVATION_DEACTIVATED', 'Activation has been deactivated.', 403);
+        }
+
         if ($license->expires_at && now()->greaterThan($license->expires_at)) {
             return ApiResponse::error('LICENSE_EXPIRED', 'License key has expired.', 403);
         }
@@ -144,6 +156,41 @@ class LicenseClientController extends Controller
             'expires_at' => optional($license->expires_at)?->toISOString(),
             'features' => (object) [],
             'message' => null,
+        ]);
+    }
+
+    public function deactivate(Request $request, LicenseCacheService $cache): JsonResponse
+    {
+        $payload = $request->validate([
+            'license_key' => ['required', 'string'],
+            'activation_id' => ['required', 'string'],
+            'domain' => ['required', 'string'],
+        ]);
+
+        $licenseHash = hash('sha256', $payload['license_key']);
+        $license = LicenseKey::query()->where('license_key', $licenseHash)->first();
+
+        if (! $license) {
+            return ApiResponse::error('LICENSE_NOT_FOUND', 'License key not found.', 403);
+        }
+
+        $activation = Activation::query()
+            ->where('license_id', $license->id)
+            ->where('activation_code', $payload['activation_id'])
+            ->where('domain', $payload['domain'])
+            ->first();
+
+        if (! $activation) {
+            return ApiResponse::error('ACTIVATION_NOT_FOUND', 'Activation not found.', 403);
+        }
+
+        $activation->forceFill(['status' => 'deactivated'])->save();
+        $cache->invalidateLicense($licenseHash, $license->id, $activation->id);
+        $cache->invalidateActivation($activation->id);
+
+        return ApiResponse::success([
+            'status' => 'deactivated',
+            'activation_id' => $activation->activation_code,
         ]);
     }
 }
