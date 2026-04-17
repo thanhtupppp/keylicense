@@ -1,102 +1,39 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - License Platform</title>
-    <style>
-        :root { color-scheme: light dark; }
-        body {
-            margin: 0;
-            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-        }
-        .card {
-            width: 100%;
-            max-width: 420px;
-            background: #111827;
-            border: 1px solid #1f2937;
-            border-radius: 16px;
-            padding: 28px;
-            box-shadow: 0 20px 50px rgba(0,0,0,.35);
-        }
-        h1 { margin: 0 0 8px; font-size: 1.35rem; }
-        p { margin: 0 0 20px; color: #94a3b8; font-size: .95rem; }
-        .group { margin-bottom: 14px; }
-        label { display: block; margin-bottom: 6px; font-size: .88rem; color: #cbd5e1; }
-        input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 11px 12px;
-            border-radius: 10px;
-            border: 1px solid #334155;
-            background: #0b1220;
-            color: #e2e8f0;
-            outline: none;
-        }
-        input:focus { border-color: #3b82f6; }
-        .error {
-            margin-bottom: 12px;
-            background: #7f1d1d;
-            border: 1px solid #ef4444;
-            color: #fecaca;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: .9rem;
-        }
-        button {
-            width: 100%;
-            margin-top: 6px;
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            padding: 11px 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        button:hover { background: #1d4ed8; }
-        .helper { margin-top: 12px; color: #94a3b8; font-size: .8rem; }
-        .helper code { color: #e2e8f0; }
-    </style>
-</head>
-<body>
-    <main class="card">
-        <h1>Đăng nhập Admin</h1>
-        <p>License Platform Control Panel</p>
+@extends('layouts.admin', [
+    'title' => 'Admin Login | KeyLicense',
+    'description' => 'Đăng nhập vào admin portal của KeyLicense',
+])
 
-        @if ($errors->any())
-            <div class="error">{{ $errors->first() }}</div>
-        @endif
-
-        <form method="POST" action="{{ route('admin.portal.login.submit') }}">
-            @csrf
-
-            <div class="group">
-                <label for="email">Email</label>
-                <input id="email" name="email" type="email" value="{{ old('email') }}" required autocomplete="email" />
+@section('content')
+    <main style="display:grid;place-items:center;min-height:calc(100vh - 56px);padding:24px 0;">
+        <x-ui.card style="width:100%;max-width:460px;padding:30px;">
+            <div class="brand" style="margin-bottom:24px;">
+                <span class="mark"></span>
+                <div>
+                    <h1 class="title">Đăng nhập Admin</h1>
+                    <div class="muted">KeyLicense Control Panel</div>
+                </div>
             </div>
 
-            <div class="group">
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" required autocomplete="current-password" />
+            @if ($errors->any())
+                <x-ui.notice type="danger">{{ $errors->first() }}</x-ui.notice>
+            @endif
+
+            <form method="POST" action="{{ route('admin.portal.login.submit') }}" style="margin-top:22px;display:grid;gap:14px;">
+                @csrf
+                <x-ui.input label="Email" name="email" type="email" :value="old('email')" placeholder="admin@company.com" autocomplete="email" required />
+                <x-ui.input label="Mật khẩu" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+
+                <label style="display:flex;align-items:center;gap:10px;">
+                    <input id="remember" name="remember" type="checkbox" value="1" {{ old('remember') ? 'checked' : '' }} style="width:18px;height:18px;accent-color:#60a5fa;" />
+                    <span>Ghi nhớ đăng nhập</span>
+                </label>
+
+                <x-ui.button type="submit">Đăng nhập</x-ui.button>
+            </form>
+
+            <div class="muted" style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(148,163,184,.14);font-size:.92rem;">
+                Tài khoản dev mặc định: <span class="mono">admin@internal.local</span> / <span class="mono">secret-password</span>
             </div>
-
-            <div class="group" style="display:flex;align-items:center;gap:8px;">
-                <input id="remember" name="remember" type="checkbox" value="1" style="width:auto;" {{ old('remember') ? 'checked' : '' }} />
-                <label for="remember" style="margin:0;">Remember me (giữ đăng nhập lâu hơn)</label>
-            </div>
-
-            <button type="submit">Đăng nhập</button>
-        </form>
-
-        <div class="helper">
-            Dev default: <code>admin@internal.local</code> / <code>secret-password</code>
-        </div>
+        </x-ui.card>
     </main>
-</body>
-</html>
+@endsection

@@ -4,12 +4,15 @@ use App\Http\Controllers\Api\Admin\AdminSessionController;
 use App\Http\Controllers\Api\Admin\ApiKeyController;
 use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\BillingWebhookController;
+use App\Http\Controllers\Api\Admin\ChargebackController;
+use App\Http\Controllers\Api\Admin\CouponController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DunningController;
 use App\Http\Controllers\Api\Admin\EntitlementController;
 use App\Http\Controllers\Api\Admin\InvoiceController;
 use App\Http\Controllers\Api\Admin\JobDlqController;
 use App\Http\Controllers\Api\Admin\LicenseController;
+use App\Http\Controllers\Api\Admin\LicenseTransferController;
 use App\Http\Controllers\Api\Admin\MfaController;
 use App\Http\Controllers\Api\Admin\FeatureController;
 use App\Http\Controllers\Api\Admin\PlanController;
@@ -75,6 +78,8 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/licenses/{id}/suspend', [LicenseController::class, 'suspend']);
             Route::post('/licenses/{id}/unsuspend', [LicenseController::class, 'unsuspend']);
             Route::post('/licenses/{id}/extend', [LicenseController::class, 'extend']);
+            Route::post('/licenses/bulk', [LicenseController::class, 'bulk']);
+            Route::post('/license-transfers', [LicenseTransferController::class, 'store']);
             Route::get('/reports/expiring', [ReportController::class, 'expiring']);
             Route::get('/reports/activations', [ReportController::class, 'activations']);
             Route::get('/reports/export', [ReportController::class, 'export']);
@@ -90,6 +95,9 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('/api-keys/{id}', [ApiKeyController::class, 'revoke']);
             Route::post('/orders/{orderId}/refund', [RefundController::class, 'store']);
             Route::post('/resellers', [ResellerController::class, 'store']);
+            Route::post('/coupons', [CouponController::class, 'store']);
+            Route::post('/coupons/validate', [CouponController::class, 'validate']);
+            Route::post('/coupons/apply', [CouponController::class, 'apply']);
         });
 
         Route::middleware('admin.role:super_admin,admin,support')->group(function (): void {
@@ -118,6 +126,8 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/subscriptions/{id}/retry-payment', [DunningController::class, 'retryPayment']);
             Route::post('/billing-webhooks/payment-failed', [BillingWebhookController::class, 'paymentFailed']);
             Route::post('/billing-webhooks/payment-succeeded', [BillingWebhookController::class, 'paymentSucceeded']);
+            Route::post('/billing-webhooks/order-created', [BillingWebhookController::class, 'orderCreated']);
+            Route::post('/billing-webhooks/chargeback', [ChargebackController::class, 'store']);
             Route::get('/jobs/dlq', [JobDlqController::class, 'index']);
             Route::post('/jobs/dlq/{id}/retry', [JobDlqController::class, 'retry']);
             Route::post('/jobs/dlq/{id}/discard', [JobDlqController::class, 'discard']);
