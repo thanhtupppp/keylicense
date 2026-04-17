@@ -18,20 +18,23 @@
     <div class="grid cols-2">
         <section class="card stack">
             <x-ui.section-header title="Đăng nhập" subtitle="Dùng email và mật khẩu để vào portal." />
-            <div class="grid" style="gap:12px;">
+            <form method="POST" action="{{ route('client.auth.login') }}" class="grid" style="gap:12px;">
+                @csrf
                 <x-ui.input label="Email" name="email" placeholder="customer@example.com" />
                 <x-ui.input label="Mật khẩu" name="password" type="password" placeholder="••••••••" />
-                <x-ui.button>Đăng nhập</x-ui.button>
-            </div>
+                <x-ui.button type="submit">Đăng nhập</x-ui.button>
+            </form>
         </section>
 
         <section class="card stack">
             <x-ui.section-header title="Đăng ký nhanh" subtitle="Tạo tài khoản customer mới." />
-            <div class="grid" style="gap:12px;">
-                <x-ui.input label="Họ tên" name="register_name" placeholder="Nguyễn Văn A" />
-                <x-ui.input label="Email" name="register_email" placeholder="customer@example.com" />
-                <x-ui.button variant="alt">Tạo tài khoản</x-ui.button>
-            </div>
+            <form method="POST" action="{{ route('client.auth.register') }}" class="grid" style="gap:12px;">
+                @csrf
+                <x-ui.input label="Họ tên" name="name" placeholder="Nguyễn Văn A" />
+                <x-ui.input label="Email" name="email" placeholder="customer@example.com" />
+                <x-ui.input label="Mã xác minh" name="verification_code" placeholder="123456" />
+                <x-ui.button type="submit" variant="alt">Tạo tài khoản</x-ui.button>
+            </form>
         </section>
     </div>
 @endsection

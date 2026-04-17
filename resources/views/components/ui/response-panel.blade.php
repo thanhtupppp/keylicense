@@ -32,7 +32,7 @@
     @endif
 
     @if ($resultId)
-        <div id="{{ $resultId }}" class="codebox" data-role="result">Chưa có response.</div>
+        <pre id="{{ $resultId }}" class="codebox" data-role="result" style="white-space:pre-wrap;">Chưa có response.</pre>
     @endif
 
     {{ $slot }}

@@ -17,13 +17,16 @@
 @section('content')
     <x-ui.header title="Quản lý Coupons" subtitle="Tạo và quản lý mã giảm giá theo plan/product">
         <x-ui.button :href="route('admin.portal.dashboard')" variant="alt">← Quay lại tổng quan</x-ui.button>
-        <x-ui.button>Coupon mới</x-ui.button>
     </x-ui.header>
 
+    @if (session('status'))
+        <x-ui.notice type="success">{{ session('status') }}</x-ui.notice>
+    @endif
+
     <div class="grid cols-3">
-        <x-ui.stat value="24" label="Đang hoạt động" />
-        <x-ui.stat value="8" label="Đã dùng" />
-        <x-ui.stat value="2" label="Sắp hết hạn" />
+        <x-ui.stat :value="count($coupons ?? [])" label="Tổng coupons" />
+        <x-ui.stat value="0" label="Đã dùng" />
+        <x-ui.stat value="0" label="Sắp hết hạn" />
     </div>
 
     <div class="grid cols-2" style="margin-top:16px;">
@@ -36,28 +39,37 @@
                             <th>Mã</th>
                             <th>Loại</th>
                             <th>Giá trị</th>
-                            <th>Phạm vi</th>
                             <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="mono">LAUNCH50</td>
-                            <td>percent</td>
-                            <td>50%</td>
-                            <td>any</td>
-                            <td><span class="badge ok">Hoạt động</span></td>
-                            <td><x-ui.button variant="danger">Tắt</x-ui.button></td>
-                        </tr>
-                        <tr>
-                            <td class="mono">TRIAL14</td>
-                            <td>trial_extension</td>
-                            <td>14 ngày</td>
-                            <td>PLUGIN_SEO</td>
-                            <td><span class="badge current">Giới hạn</span></td>
-                            <td><x-ui.button variant="alt">Xem lượt dùng</x-ui.button></td>
-                        </tr>
+                        @forelse ($coupons as $coupon)
+                            <tr>
+                                <td class="mono">{{ $coupon->code }}</td>
+                                <td>{{ $coupon->discount_type }}</td>
+                                <td>{{ $coupon->discount_value }}</td>
+                                <td>
+                                    @if ($coupon->is_active)
+                                        <span class="badge ok">Hoạt động</span>
+                                    @else
+                                        <span class="badge current">Tắt</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($coupon->is_active)
+                                        <form method="POST" action="{{ route('admin.portal.coupons.deactivate', ['id' => $coupon->id]) }}">
+                                            @csrf
+                                            <x-ui.button type="submit" variant="danger">Tắt</x-ui.button>
+                                        </form>
+                                    @else
+                                        <span class="muted">-</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <x-ui.table-empty colspan="5">Chưa có coupon nào.</x-ui.table-empty>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -66,12 +78,14 @@
         <aside class="stack">
             <section class="card">
                 <x-ui.section-header title="Tạo coupon" subtitle="Dùng cho chiến dịch, trial extension hoặc free plan." />
-                <div class="grid" style="gap:12px;">
-                    <x-ui.input label="Mã coupon" name="code" placeholder="LAUNCH50" />
-                    <x-ui.input label="Loại giảm giá" name="discount_type" placeholder="percent" />
-                    <x-ui.input label="Giá trị" name="discount_value" placeholder="50" />
-                    <x-ui.button>Tạo coupon</x-ui.button>
-                </div>
+                <form method="POST" action="{{ route('admin.portal.coupons.store') }}" class="grid" style="gap:12px;">
+                    @csrf
+                    <x-ui.input label="Mã coupon" name="code" placeholder="LAUNCH50" required />
+                    <x-ui.input label="Tên coupon" name="name" placeholder="Launch campaign" required />
+                    <x-ui.input label="Loại giảm giá" name="discount_type" placeholder="percent" required />
+                    <x-ui.input label="Giá trị" name="discount_value" placeholder="50" required />
+                    <x-ui.button type="submit">Tạo coupon</x-ui.button>
+                </form>
             </section>
 
             <section class="card">
