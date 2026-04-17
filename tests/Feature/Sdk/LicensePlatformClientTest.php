@@ -15,12 +15,13 @@ it('maps successful sdk responses', function (): void {
         ], 200),
     ]);
 
-    $client = new LicensePlatformClient('https://example.test', 'api-key');
-    $response = $client->activate([
-        'license_key' => 'raw-key',
+    $client = new LicensePlatformClient([
+        'base_url' => 'https://example.test',
+        'api_key' => 'api-key',
         'product_code' => 'prod-1',
-        'domain' => 'example.com',
     ]);
+
+    $response = $client->activate('raw-key', 'example.com');
 
     expect($response->ok)->toBeTrue()
         ->and($response->status)->toBe(200)
@@ -35,15 +36,39 @@ it('maps failed sdk responses', function (): void {
         ], 403),
     ]);
 
-    $client = new LicensePlatformClient('https://example.test');
-    $response = $client->validate([
-        'license_key' => 'raw-key',
+    $client = new LicensePlatformClient([
+        'base_url' => 'https://example.test',
         'product_code' => 'prod-1',
-        'activation_id' => 'act_123',
-        'domain' => 'example.com',
     ]);
+
+    $response = $client->validate('raw-key', 'act_123', 'example.com');
 
     expect($response->ok)->toBeFalse()
         ->and($response->status)->toBe(403)
         ->and($response->code)->toBe('LICENSE_EXPIRED');
+});
+
+it('supports heartbeat, deactivate and update check', function (): void {
+    Http::fake([
+        '*' => Http::response([
+            'data' => [
+                'accepted' => true,
+                'next_heartbeat_at' => now()->addHours(12)->toISOString(),
+                'update_available' => true,
+            ],
+        ], 200),
+    ]);
+
+    $client = new LicensePlatformClient([
+        'base_url' => 'https://example.test',
+        'product_code' => 'prod-1',
+    ]);
+
+    $heartbeat = $client->heartbeat('act_123', 'raw-key', 'example.com');
+    $update = $client->updateCheck('raw-key', '1.0.0', 'example.com');
+    $deactivate = $client->deactivate('raw-key', 'act_123', 'example.com');
+
+    expect($heartbeat->ok)->toBeTrue()
+        ->and($update->ok)->toBeTrue()
+        ->and($deactivate->ok)->toBeTrue();
 });

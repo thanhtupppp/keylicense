@@ -86,120 +86,120 @@ Infrastructure
 
 - [ ] Rà lại audit log consistency
 
-- [ ] Bổ sung test coverage cho login/session/license core
+- [x] Bổ sung test coverage cho login/session/license core
 
-- [ ] Dọn cleanup các payload còn chưa nhất quán
+- [x] Dọn cleanup các payload còn chưa nhất quán
       Sprint 5 — Activation, Notification, Email Verify, Notification Prefs
       Activation
 
-- [ ] Hoàn thiện heartbeat job/handler
+- [x] Hoàn thiện heartbeat job/handler
 
-- [ ] Hoàn thiện deactivate endpoint
+- [x] Hoàn thiện deactivate endpoint
 
-- [ ] Rà lại trạng thái expired/revoked/suspended
+- [x] Rà lại trạng thái expired/revoked/suspended
 
-- [ ] Bổ sung edge cases cho activation state machine
+- [x] Bổ sung edge cases cho activation state machine
       Notification
 
-- [ ] Tạo flow email gửi key sau issue
+- [x] Tạo flow email gửi key sau issue
 
-- [ ] Tạo cảnh báo expiring soon
+- [x] Tạo cảnh báo expiring soon
 
-- [ ] Tạo revoke notice email
+- [x] Tạo revoke notice email
 
-- [ ] Bổ sung retry/failure handling cho mail
+- [x] Bổ sung retry/failure handling cho mail
       Email Verify
 
-- [ ] Hoàn thiện verify email flow
+- [x] Hoàn thiện verify email flow
 
-- [ ] Hoàn thiện resend verification
+- [x] Hoàn thiện resend verification
 
-- [ ] Rà lại onboarding checklist
+- [x] Rà lại onboarding checklist
       Notification Prefs
 
-- [ ] Hoàn thiện opt-in/out
+- [x] Hoàn thiện opt-in/out
 
-- [ ] Hoàn thiện unsubscribe token
+- [x] Hoàn thiện unsubscribe token
 
-- [ ] Đồng bộ controller/service/test
+- [x] Đồng bộ controller/service/test
       Sprint 6 — Governance, License lifecycle
       Governance
 
-- [ ] Hoàn thiện RBAC đầy đủ
+- [x] Hoàn thiện RBAC đầy đủ
 
-- [ ] Bổ sung scoped access per product
+- [x] Bổ sung scoped access per product
 
-- [ ] Hoàn thiện policy/gate cho admin actions
+- [x] Hoàn thiện policy/gate cho admin actions
 
-- [ ] Làm rõ role matrix và permission matrix
+- [x] Làm rõ role matrix và permission matrix
       License lifecycle
 
-- [ ] Hoàn thiện revoke
+- [x] Hoàn thiện revoke
 
-- [ ] Hoàn thiện suspend
+- [x] Hoàn thiện suspend
 
-- [ ] Hoàn thiện unsuspend
+- [x] Hoàn thiện unsuspend
 
-- [ ] Hoàn thiện extend expiry
+- [x] Hoàn thiện extend expiry
 
-- [ ] Bổ sung test cho từng state transition
+- [x] Bổ sung test cho từng state transition
       Sprint 7 — Update check, Environment, Admin Portal v2
       Update check
 
-- [ ] Tạo endpoint /updates/check
+- [x] Tạo endpoint /updates/check
 
-- [ ] Link ProductVersion với entitlement
+- [x] Link ProductVersion với entitlement
 
-- [ ] Bổ sung policy response cho update availability
+- [x] Bổ sung policy response cho update availability
 
-- [ ] Thêm test cho compatibility/version rule
+- [x] Thêm test cho compatibility/version rule
       Environment
 
-- [ ] Hoàn thiện environments table
+- [x] Hoàn thiện environments table
 
-- [ ] Tách staging/dev/prod key separation rõ ràng
+- [x] Tách staging/dev/prod key separation rõ ràng
 
-- [ ] Bổ sung rate limit multiplier theo environment
+- [x] Bổ sung rate limit multiplier theo environment
       Admin Portal v2
 
-- [ ] Hoàn thiện dashboard tổng quan
+- [x] Hoàn thiện dashboard tổng quan
 
-- [ ] Hoàn thiện filter/search
+- [x] Hoàn thiện filter/search
 
-- [ ] Hoàn thiện revoke/suspend UI flow
+- [x] Hoàn thiện revoke/suspend UI flow
 
-- [ ] Rà lại API trả về cho frontend
+- [x] Rà lại API trả về cho frontend
       Sprint 8 — Reports, SDK PHP v2
       Reports
 
-- [ ] Hoàn thiện expiring report
+- [x] Hoàn thiện expiring report
 
-- [ ] Hoàn thiện activation report
+- [x] Hoàn thiện activation report
 
-- [ ] Export CSV
+- [x] Export CSV
 
-- [ ] Bổ sung filter by product/date/status
+- [x] Bổ sung filter by product/date/status
       SDK PHP v2
 
-- [ ] Thêm heartbeat client
+- [x] Thêm heartbeat client
 
-- [ ] Thêm deactivate client
+- [x] Thêm deactivate client
 
-- [ ] Thêm update_check client
+- [x] Thêm update_check client
 
-- [ ] Hoàn thiện error handling chuẩn hoá
+- [x] Hoàn thiện error handling chuẩn hoá
       Sprint 9 — Offline activation, Grace period
       Offline activation
 
-- [ ] Tạo /offline/request
+- [x] Tạo /offline/request
 
-- [ ] Tạo /offline/confirm
+- [x] Tạo /offline/confirm
 
-- [ ] Implement challenge-response Ed25519
+- [x] Implement challenge-response Ed25519
 
-- [ ] One-time-use challenge
+- [x] One-time-use challenge
 
-- [ ] Expiry handling cho challenge
+- [x] Expiry handling cho challenge
       Grace period
 
 - [ ] Tạo cron/job cập nhật grace → expired

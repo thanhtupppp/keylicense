@@ -7,6 +7,7 @@ use App\Models\Activation;
 use App\Models\AdminUser;
 use App\Models\Entitlement;
 use App\Models\LicenseKey;
+use App\Services\Notifications\LicenseNotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,12 +15,16 @@ use Illuminate\Support\Str;
 
 class LicenseController extends Controller
 {
-    public function issue(Request $request): JsonResponse
+    public function issue(Request $request, LicenseNotificationService $notifications): JsonResponse
     {
         $actor = $this->admin($request);
 
         if (! $actor) {
             return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
+        }
+
+        if (! $request->user('admin')?->can('admin-license-manage')) {
+            return ApiResponse::error('FORBIDDEN', 'Insufficient admin permissions.', 403);
         }
 
         $payload = $request->validate([
@@ -48,6 +53,15 @@ class LicenseController extends Controller
             ]);
 
             $licenses[] = $this->formatLicense($license, $raw);
+
+            if (filled($entitlement->customer?->email)) {
+                $notifications->sendIssuedLicense(
+                    $entitlement->customer->email,
+                    $raw,
+                    $license->key_display,
+                    $entitlement
+                );
+            }
         }
 
         return ApiResponse::success(['licenses' => $licenses], 201);
@@ -83,9 +97,9 @@ class LicenseController extends Controller
         ]);
     }
 
-    public function revoke(string $id): JsonResponse
+    public function revoke(string $id, LicenseNotificationService $notifications): JsonResponse
     {
-        return $this->updateStatus($id, 'revoked');
+        return $this->updateStatus($id, 'revoked', $notifications);
     }
 
     public function suspend(string $id): JsonResponse
@@ -116,10 +130,14 @@ class LicenseController extends Controller
         ]);
     }
 
-    private function updateStatus(string $id, string $status): JsonResponse
+    private function updateStatus(string $id, string $status, ?LicenseNotificationService $notifications = null): JsonResponse
     {
-        $license = LicenseKey::query()->findOrFail($id);
+        $license = LicenseKey::query()->with('entitlement.customer')->findOrFail($id);
         $license->forceFill(['status' => $status])->save();
+
+        if ($status === 'revoked' && $notifications && filled($license->entitlement?->customer?->email)) {
+            $notifications->sendRevokedLicense($license->entitlement->customer->email, $license);
+        }
 
         return ApiResponse::success([
             'license' => $this->formatLicense($license->fresh()),

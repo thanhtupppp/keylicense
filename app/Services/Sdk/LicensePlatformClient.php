@@ -30,85 +30,86 @@ class LicensePlatformClient
         $this->retryAttempts = (int) ($config['retry_attempts'] ?? 3);
     }
 
-    public function activate(string $licenseKey, string $domain, array $device = []): object
+    public function activate(string $licenseKey, string $domain, array $device = []): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/licenses/activate', [
+        return $this->request('post', '/v1/client/licenses/activate', [
             'license_key' => $licenseKey,
             'product_code' => $this->productCode,
             'domain' => $domain,
             'device' => $device,
         ], ['Idempotency-Key' => (string) Str::uuid()]);
-
-        return $this->mapActivation($response);
     }
 
-    public function validate(string $licenseKey, string $activationId, string $domain): object
+    public function validate(string $licenseKey, string $activationId, string $domain): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/licenses/validate', [
+        return $this->request('post', '/v1/client/licenses/validate', [
             'license_key' => $licenseKey,
             'product_code' => $this->productCode,
             'activation_id' => $activationId,
             'domain' => $domain,
         ]);
-
-        return $this->mapValidation($response);
     }
 
-    public function heartbeat(string $activationId, string $licenseKey, string $domain): object
+    public function heartbeat(string $activationId, string $licenseKey, string $domain): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/licenses/heartbeat', [
+        return $this->request('post', '/v1/client/licenses/heartbeat', [
             'license_key' => $licenseKey,
             'activation_id' => $activationId,
             'domain' => $domain,
         ], ['X-Correlation-Id' => (string) Str::uuid()]);
-
-        return $this->mapHeartbeat($response);
     }
 
-    public function checkUpdate(string $licenseKey, string $currentVersion, string $domain): object
+    public function updateCheck(string $licenseKey, string $currentVersion, string $domain): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/licenses/update-check', [
+        return $this->request('post', '/v1/client/licenses/update-check', [
             'license_key' => $licenseKey,
             'product_code' => $this->productCode,
             'current_version' => $currentVersion,
             'domain' => $domain,
         ]);
-
-        return $this->mapUpdateCheck($response);
     }
 
-    public function requestOfflineChallenge(string $licenseKey, string $domain, array $device = []): object
+    public function checkUpdate(string $licenseKey, string $currentVersion, string $domain): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/licenses/offline/challenge', [
+        return $this->updateCheck($licenseKey, $currentVersion, $domain);
+    }
+
+    public function deactivate(string $licenseKey, string $activationId, string $domain): SdkResponse
+    {
+        return $this->request('post', '/v1/client/licenses/deactivate', [
+            'license_key' => $licenseKey,
+            'product_code' => $this->productCode,
+            'activation_id' => $activationId,
+            'domain' => $domain,
+        ]);
+    }
+
+    public function requestOfflineChallenge(string $licenseKey, string $domain, array $device = []): SdkResponse
+    {
+        return $this->request('post', '/v1/client/licenses/offline/challenge', [
             'license_key' => $licenseKey,
             'product_code' => $this->productCode,
             'domain' => $domain,
             'device' => $device,
         ], ['Idempotency-Key' => (string) Str::uuid()]);
-
-        return $this->mapOfflineChallenge($response);
     }
 
-    public function recordUsage(string $licenseKey, string $metric, int $quantity, string $idempotencyKey): object
+    public function recordUsage(string $licenseKey, string $metric, int $quantity, string $idempotencyKey): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/usage/records', [
+        return $this->request('post', '/v1/client/usage/records', [
             'license_key' => $licenseKey,
             'product_code' => $this->productCode,
             'metric' => $metric,
             'quantity' => $quantity,
         ], ['Idempotency-Key' => $idempotencyKey]);
-
-        return $this->mapUsage($response);
     }
 
-    public function validateCoupon(string $couponCode, string $planCode): object
+    public function validateCoupon(string $couponCode, string $planCode): SdkResponse
     {
-        $response = $this->request('post', '/v1/client/coupons/validate', [
+        return $this->request('post', '/v1/client/coupons/validate', [
             'coupon_code' => $couponCode,
             'plan_code' => $planCode,
         ]);
-
-        return $this->mapCoupon($response);
     }
 
     private function request(string $method, string $path, array $payload = [], array $headers = []): SdkResponse
@@ -118,19 +119,19 @@ class LicensePlatformClient
             $response = $request->{$method}($this->baseUrl.$path, $payload);
 
             if ($response->successful()) {
-                return SdkResponse::success($response->json('data') ?? []);
+                return SdkResponse::success($response->json('data') ?? [], $response->status());
             }
 
             $errorCode = $this->mapErrorCode($response->json('error_code') ?? $response->json('code'));
             $message = $response->json('message') ?? 'Request failed.';
 
-            throw new LicensePlatformException($message, $errorCode, $response->status(), [
-                'response' => $response->json(),
-            ]);
+            return SdkResponse::failure($response->status(), $errorCode, $message);
         } catch (ConnectionException $e) {
-            throw new LicensePlatformException($e->getMessage(), 'CONNECTION_ERROR', 0);
+            return SdkResponse::failure(0, 'CONNECTION_ERROR', $e->getMessage());
         } catch (RequestException $e) {
-            throw new LicensePlatformException($e->getMessage(), 'HTTP_ERROR', $e->response?->status() ?? 0);
+            return SdkResponse::failure($e->response?->status() ?? 0, 'HTTP_ERROR', $e->getMessage());
+        } catch (\Throwable $e) {
+            return SdkResponse::failure(0, 'SDK_ERROR', $e->getMessage());
         }
     }
 
@@ -147,77 +148,6 @@ class LicensePlatformClient
         }
 
         return $request;
-    }
-
-    private function mapActivation(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'activationId' => $data['activation_id'] ?? null,
-            'status' => $data['status'] ?? null,
-        ];
-    }
-
-    private function mapValidation(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'valid' => (bool) ($data['valid'] ?? false),
-            'status' => $data['status'] ?? null,
-        ];
-    }
-
-    private function mapHeartbeat(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'accepted' => (bool) ($data['accepted'] ?? false),
-            'nextHeartbeatAt' => $data['next_heartbeat_at'] ?? null,
-        ];
-    }
-
-    private function mapUpdateCheck(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'updateAvailable' => (bool) ($data['update_available'] ?? false),
-        ];
-    }
-
-    private function mapOfflineChallenge(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'challengeId' => $data['challenge_id'] ?? null,
-            'expiresAt' => $data['expires_at'] ?? null,
-        ];
-    }
-
-    private function mapUsage(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'recorded' => (bool) ($data['recorded'] ?? false),
-            'totalUsage' => $data['total_usage'] ?? null,
-            'overLimit' => (bool) ($data['over_limit'] ?? false),
-        ];
-    }
-
-    private function mapCoupon(SdkResponse $response): object
-    {
-        $data = $response->data;
-
-        return (object) [
-            'valid' => (bool) ($data['valid'] ?? false),
-            'couponCode' => $data['coupon_code'] ?? null,
-            'planCode' => $data['plan_code'] ?? null,
-        ];
     }
 
     private function mapErrorCode(mixed $code): string

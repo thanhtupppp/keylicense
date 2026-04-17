@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AdminUser extends Authenticatable
 {
@@ -40,4 +41,10 @@ class AdminUser extends Authenticatable
         'password_hash',
         'mfa_secret',
     ];
+
+    public function managedProducts(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'admin_product_scopes', 'admin_user_id', 'product_id')
+            ->withTimestamps();
+    }
 }

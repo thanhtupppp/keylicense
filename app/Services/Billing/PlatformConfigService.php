@@ -119,64 +119,75 @@ class PlatformConfigService
             'description' => 'Bật/tắt reseller portal',
             'is_sensitive' => false,
         ],
-        'feature_flag_affiliate_program' => [
-            'value' => false,
-            'value_type' => PlatformConfig::VALUE_TYPE_BOOLEAN,
-            'description' => 'Bật/tắt affiliate program',
-            'is_sensitive' => false,
-        ],
     ];
+
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return $this->all()->get($key, self::DEFAULTS[$key]['value'] ?? $default);
+    }
 
     public function all(): Collection
     {
-        return Cache::remember(self::CACHE_KEY, 600, function (): Collection {
-            return PlatformConfig::query()->orderBy('key')->get();
+        return Cache::rememberForever(self::CACHE_KEY, function (): Collection {
+            return PlatformConfig::query()->get()->keyBy('key')->map(static fn (PlatformConfig $config): mixed => $config->castValue());
         });
     }
 
-    public function refreshCache(): void
+    public function flush(): void
     {
         Cache::forget(self::CACHE_KEY);
     }
 
-    public function ensureDefaults(): int
+    public function refreshCache(): void
     {
-        $count = 0;
+        $this->flush();
+        $this->all();
+    }
 
+    public function ensureDefaults(): void
+    {
         foreach (self::DEFAULTS as $key => $definition) {
-            PlatformConfig::query()->updateOrCreate(
+            PlatformConfig::query()->firstOrCreate(
                 ['key' => $key],
                 [
-                    'value' => $this->normalizeValue($definition['value'], $definition['value_type']),
+                    'value' => (string) $definition['value'],
                     'value_type' => $definition['value_type'],
                     'description' => $definition['description'],
                     'is_sensitive' => $definition['is_sensitive'],
-                    'updated_at' => now(),
                 ]
             );
-
-            $count++;
         }
 
-        $this->refreshCache();
-
-        return $count;
+        $this->flush();
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    public function environmentRateLimitMultiplier(string $environmentSlug): float
     {
-        $config = $this->all()->firstWhere('key', $key);
-
-        return $config?->typed_value ?? $default;
+        return match ($environmentSlug) {
+            'development' => 0.25,
+            'staging' => 0.5,
+            'production' => 1.0,
+            default => 1.0,
+        };
     }
 
-    private function normalizeValue(mixed $value, string $valueType): string
+    public function environmentGracePeriodDays(string $environmentSlug): int
     {
-        return match ($valueType) {
-            PlatformConfig::VALUE_TYPE_INTEGER => (string) (int) $value,
-            PlatformConfig::VALUE_TYPE_BOOLEAN => $value ? 'true' : 'false',
-            PlatformConfig::VALUE_TYPE_JSON => (string) json_encode($value, JSON_UNESCAPED_UNICODE),
-            default => (string) $value,
+        return match ($environmentSlug) {
+            'development' => 14,
+            'staging' => 10,
+            'production' => (int) $this->get('default_grace_period_days', 7),
+            default => (int) $this->get('default_grace_period_days', 7),
+        };
+    }
+
+    public function environmentHeartbeatHours(string $environmentSlug): int
+    {
+        return match ($environmentSlug) {
+            'development' => 6,
+            'staging' => 8,
+            'production' => (int) $this->get('default_heartbeat_interval_hours', 12),
+            default => (int) $this->get('default_heartbeat_interval_hours', 12),
         };
     }
 }

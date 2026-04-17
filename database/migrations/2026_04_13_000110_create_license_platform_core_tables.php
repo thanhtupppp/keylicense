@@ -66,6 +66,9 @@ return new class extends Migration
             $table->string('status', 32)->default('active');
             $table->timestampTz('activated_at');
             $table->timestampTz('last_validated_at')->nullable();
+            $table->string('offline_challenge', 128)->nullable();
+            $table->timestampTz('offline_challenge_expires_at')->nullable();
+            $table->timestampTz('offline_challenge_used_at')->nullable();
             $table->timestamps();
 
             $table->index(['license_id', 'domain']);

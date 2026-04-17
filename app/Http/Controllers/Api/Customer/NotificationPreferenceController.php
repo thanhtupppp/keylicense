@@ -7,6 +7,7 @@ use App\Models\NotificationPreference;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class NotificationPreferenceController extends Controller
 {
@@ -51,6 +52,11 @@ class NotificationPreferenceController extends Controller
                 ],
                 [
                     'enabled' => $preference['enabled'],
+                    'unsubscribe_token' => NotificationPreference::query()->where([
+                        'customer_id' => $customerId,
+                        'notification_code' => $preference['notification_code'],
+                        'channel' => $preference['channel'],
+                    ])->value('unsubscribe_token') ?? Str::random(64),
                 ]
             );
         }

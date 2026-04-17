@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminUser;
 use App\Models\Entitlement;
+use App\Services\Access\ProductScopeService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +16,10 @@ class EntitlementController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Entitlement::query()->with('plan.product');
+
+        if (! $request->user('admin')?->can('admin-entitlement-manage')) {
+            return ApiResponse::error('FORBIDDEN', 'Insufficient admin permissions.', 403);
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -63,10 +69,17 @@ class EntitlementController extends Controller
         return ApiResponse::success(['entitlement' => $entitlement->toArray()], 201);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id, ProductScopeService $scopeService): JsonResponse
     {
+        $entitlement = Entitlement::query()->with('plan.product', 'licenses')->findOrFail($id);
+        $admin = $request->attributes->get('admin_user') ?? $request->user('admin') ?? $request->user();
+
+        if ($admin instanceof AdminUser && ! $scopeService->canAccessEntitlement($admin, $entitlement)) {
+            return ApiResponse::error('FORBIDDEN', 'You do not have access to this product.', 403);
+        }
+
         return ApiResponse::success([
-            'entitlement' => Entitlement::query()->with('plan.product', 'licenses')->findOrFail($id),
+            'entitlement' => $entitlement,
         ]);
     }
 }

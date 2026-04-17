@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\AdminSessionController;
 use App\Http\Controllers\Api\Admin\ApiKeyController;
 use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\BillingWebhookController;
+use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DunningController;
 use App\Http\Controllers\Api\Admin\EntitlementController;
 use App\Http\Controllers\Api\Admin\InvoiceController;
@@ -20,11 +21,14 @@ use App\Http\Controllers\Api\Admin\RefundController;
 use App\Http\Controllers\Api\Admin\ResellerController;
 use App\Http\Controllers\Api\Admin\ProductVersionController;
 use App\Http\Controllers\Api\Admin\RestrictionController;
+use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\UsageController;
 use App\Http\Controllers\Api\Admin\WebhookDeliveryController;
 use App\Http\Controllers\Api\Client\ClientEnvironmentController;
 use App\Http\Controllers\Api\Client\LicenseClientController;
+use App\Http\Controllers\Api\Client\UpdateCheckController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
+use App\Http\Controllers\Api\Customer\CustomerVerificationController;
 use App\Http\Controllers\Api\Customer\DataRequestController;
 use App\Http\Controllers\Api\Customer\NotificationPreferenceController;
 use App\Http\Controllers\Api\Customer\OnboardingController;
@@ -49,6 +53,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('admin.auth')->prefix('admin')->group(function (): void {
         Route::middleware('admin.role:super_admin,admin')->group(function (): void {
+            Route::get('/dashboard', [DashboardController::class, 'show']);
             Route::get('/products', [ProductController::class, 'index']);
             Route::post('/products', [ProductController::class, 'store']);
             Route::get('/products/{id}', [ProductController::class, 'show']);
@@ -70,6 +75,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/licenses/{id}/suspend', [LicenseController::class, 'suspend']);
             Route::post('/licenses/{id}/unsuspend', [LicenseController::class, 'unsuspend']);
             Route::post('/licenses/{id}/extend', [LicenseController::class, 'extend']);
+            Route::get('/reports/expiring', [ReportController::class, 'expiring']);
+            Route::get('/reports/activations', [ReportController::class, 'activations']);
+            Route::get('/reports/export', [ReportController::class, 'export']);
             Route::get('/features', [FeatureController::class, 'index']);
             Route::post('/features', [FeatureController::class, 'store']);
             Route::patch('/features/{id}', [FeatureController::class, 'update']);
@@ -150,6 +158,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/licenses/activate', [LicenseClientController::class, 'activate']);
         Route::post('/licenses/validate', [LicenseClientController::class, 'validateLicense']);
         Route::post('/licenses/deactivate', [LicenseClientController::class, 'deactivate']);
+        Route::post('/licenses/offline/request', [LicenseClientController::class, 'requestOfflineChallenge']);
+        Route::post('/licenses/offline/confirm', [LicenseClientController::class, 'confirmOfflineChallenge']);
+        Route::post('/updates/check', [UpdateCheckController::class, 'show']);
         Route::get('/environment', [ClientEnvironmentController::class, 'show']);
     });
 
@@ -157,6 +168,9 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/customer/notification-preferences', [NotificationPreferenceController::class, 'index']);
     Route::patch('/customer/notification-preferences', [NotificationPreferenceController::class, 'update']);
     Route::post('/customer/notification-preferences/unsubscribe', [NotificationPreferenceController::class, 'unsubscribe']);
+    Route::get('/customer/verification', [CustomerVerificationController::class, 'show']);
+    Route::post('/customer/verification/verify', [CustomerVerificationController::class, 'verify']);
+    Route::post('/customer/verification/resend', [CustomerVerificationController::class, 'resend']);
     Route::get('/customer/onboarding', [OnboardingController::class, 'show']);
     Route::post('/customer/onboarding/skip', [OnboardingController::class, 'skip']);
 });
