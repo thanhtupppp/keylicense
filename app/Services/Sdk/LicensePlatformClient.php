@@ -2,23 +2,32 @@
 
 namespace App\Services\Sdk;
 
+use App\Services\Sdk\Exceptions\LicensePlatformException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
-use App\Services\Sdk\Exceptions\LicensePlatformException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class LicensePlatformClient
 {
-    public function __construct(
-        private readonly string $baseUrl,
-        private readonly ?string $apiKey = null,
-        private readonly ?string $productCode = null,
-        private readonly int $timeout = 10,
-        private readonly int $retryAttempts = 3,
-    ) {
-        $this->baseUrl = rtrim($baseUrl, '/');
+    private string $baseUrl;
+
+    private ?string $apiKey;
+
+    private ?string $productCode;
+
+    private int $timeout;
+
+    private int $retryAttempts;
+
+    public function __construct(array $config)
+    {
+        $this->baseUrl = rtrim((string) ($config['base_url'] ?? ''), '/');
+        $this->apiKey = $config['api_key'] ?? null;
+        $this->productCode = $config['product_code'] ?? null;
+        $this->timeout = (int) ($config['timeout'] ?? 10);
+        $this->retryAttempts = (int) ($config['retry_attempts'] ?? 3);
     }
 
     public function activate(string $licenseKey, string $domain, array $device = []): object
@@ -28,7 +37,7 @@ class LicensePlatformClient
             'product_code' => $this->productCode,
             'domain' => $domain,
             'device' => $device,
-        ]);
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
 
         return $this->mapActivation($response);
     }
@@ -112,15 +121,16 @@ class LicensePlatformClient
                 return SdkResponse::success($response->json('data') ?? []);
             }
 
-            return SdkResponse::failure(
-                $response->status(),
-                $this->mapErrorCode($response->json('error_code') ?? $response->json('code')),
-                $response->json('message') ?? 'Request failed.'
-            );
+            $errorCode = $this->mapErrorCode($response->json('error_code') ?? $response->json('code'));
+            $message = $response->json('message') ?? 'Request failed.';
+
+            throw new LicensePlatformException($message, $errorCode, $response->status(), [
+                'response' => $response->json(),
+            ]);
         } catch (ConnectionException $e) {
-            return SdkResponse::failure(0, 'CONNECTION_ERROR', $e->getMessage());
+            throw new LicensePlatformException($e->getMessage(), 'CONNECTION_ERROR', 0);
         } catch (RequestException $e) {
-            return SdkResponse::failure($e->response?->status() ?? 0, 'HTTP_ERROR', $e->getMessage());
+            throw new LicensePlatformException($e->getMessage(), 'HTTP_ERROR', $e->response?->status() ?? 0);
         }
     }
 

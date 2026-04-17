@@ -82,7 +82,7 @@ Infrastructure
       Sprint 4 — Foundation hardening / Admin portal completion
       Missing items
 
-- [ ] Rà toàn bộ route/admin permission mapping
+- [x] Rà toàn bộ route/admin permission mapping
 
 - [ ] Rà lại audit log consistency
 

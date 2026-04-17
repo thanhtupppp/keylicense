@@ -1,11 +1,11 @@
 <?php
 
+use App\Services\Sdk\Exceptions\LicensePlatformException;
 use App\Services\Sdk\LicensePlatformClient;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class);
 
 beforeEach(function () {
     Http::preventStrayRequests();
@@ -83,8 +83,12 @@ test('sdk client maps api errors to typed exception', function (): void {
         'product_code' => 'PLUGIN_SEO',
     ]);
 
-    $this->expectException(LicensePlatformException::class);
-    $this->expectExceptionMessage('License not found.');
-
-    $client->activate('LIC-404', 'example.com', []);
+    try {
+        $client->activate('LIC-404', 'example.com', []);
+        expect(false)->toBeTrue();
+    } catch (LicensePlatformException $e) {
+        expect($e->codeName)->toBe('LICENSE_NOT_FOUND')
+            ->and($e->getMessage())->toBe('License not found.')
+            ->and($e->statusCode)->toBe(403);
+    }
 });
