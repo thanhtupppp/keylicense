@@ -25,6 +25,7 @@ class AdminLoginService
 
     public function login(string $email, string $password, bool $remember = false, ?string $deviceKey = null, ?string $ipAddress = null, ?string $userAgent = null): array
     {
+        /** @var AdminUser|null $admin */
         $admin = AdminUser::query()->where('email', $email)->first();
         if (! $admin || ! Hash::check($password, $admin->password_hash)) {
             if ($admin) {

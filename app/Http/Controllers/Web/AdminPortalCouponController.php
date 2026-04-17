@@ -31,7 +31,10 @@ class AdminPortalCouponController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        Coupon::query()->create($data);
+        Coupon::query()->create([
+            ...$data,
+            'is_active' => $data['is_active'] ?? true,
+        ]);
 
         return redirect()->route('admin.portal.coupons')->with('status', 'Đã tạo coupon mới.');
     }

@@ -10,16 +10,17 @@ class DeactivateLicenseAction
 {
     public function execute(array $data): ActivationResult
     {
+        /** @var LicenseKey|null $license */
         $license = LicenseKey::query()
             ->with('entitlement.plan.product')
-            ->where('license_key', hash('sha256', $data['license_key']))
-            ->first();
+            ->where('license_key', '=', hash('sha256', $data['license_key']))
+            ->first(['*']);
 
         if (! $license) {
             return new ActivationResult(false, null, 'not_found', 'License key not found.', ['message' => 'License key not found.']);
         }
 
-        $activationQuery = Activation::query()->where('license_id', $license->id);
+        $activationQuery = Activation::query()->where('license_id', '=', $license->id);
 
         if (! empty($data['activation_id'])) {
             $activationQuery->where('activation_code', $data['activation_id']);

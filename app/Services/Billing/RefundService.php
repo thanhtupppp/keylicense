@@ -23,9 +23,9 @@ class RefundService
         }
 
         LicenseKey::query()
-            ->where('entitlement_id', $subscription->entitlement_id)
+            ->where('entitlement_id', '=', $subscription->entitlement_id)
             ->update([
-                'status' => $reason === 'chargeback' ? 'revoked' : 'revoked',
+                'status' => 'revoked',
                 'updated_at' => now(),
             ]);
     }

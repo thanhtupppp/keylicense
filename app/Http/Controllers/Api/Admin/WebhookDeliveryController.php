@@ -15,7 +15,7 @@ class WebhookDeliveryController extends Controller
     public function index(): JsonResponse
     {
         return ApiResponse::success([
-            'deliveries' => WebhookDelivery::query()->latest('last_attempt_at')->get(),
+            'deliveries' => WebhookDelivery::query()->latest('last_attempt_at')->get(['*']),
         ]);
     }
 

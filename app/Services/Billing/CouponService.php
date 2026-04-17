@@ -10,10 +10,11 @@ class CouponService
 {
     public function validate(string $code): array
     {
+        /** @var Coupon|null $coupon */
         $coupon = Coupon::query()
-            ->where('code', $code)
-            ->where('is_active', true)
-            ->first();
+            ->where('code', '=', $code)
+            ->where('is_active', '=', true)
+            ->first(['*']);
 
         if (! $coupon) {
             return ['valid' => false, 'message' => 'Coupon not found.'];
@@ -49,7 +50,7 @@ class CouponService
             return $result;
         }
 
-        $coupon = Coupon::query()->where('code', $code)->firstOrFail();
+        $coupon = Coupon::query()->where('code', '=', $code)->firstOrFail(['*']);
         $license = $subscription->entitlement?->licenses()->first();
         $discountAmount = (int) $coupon->discount_value;
 

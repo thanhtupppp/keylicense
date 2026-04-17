@@ -13,7 +13,7 @@ class PlanController extends Controller
     public function index(): JsonResponse
     {
         return ApiResponse::success([
-            'plans' => Plan::query()->get()->map(static fn (Plan $plan): array => [
+            'plans' => Plan::query()->latest('created_at')->get(['*'])->map(static fn (Plan $plan): array => [
                 'id' => $plan->id,
                 'product_id' => $plan->product_id,
                 'code' => $plan->code,

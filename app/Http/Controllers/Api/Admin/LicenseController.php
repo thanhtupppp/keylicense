@@ -24,7 +24,7 @@ class LicenseController extends Controller
     public function revoke(string $id): JsonResponse
     {
         $license = LicenseKey::query()->findOrFail($id);
-        $license->update(['status' => 'revoked']);
+        $license->fill(['status' => 'revoked'])->save();
 
         return ApiResponse::success(['license_id' => $id, 'status' => 'revoked']);
     }
@@ -32,7 +32,7 @@ class LicenseController extends Controller
     public function suspend(string $id): JsonResponse
     {
         $license = LicenseKey::query()->findOrFail($id);
-        $license->update(['status' => 'suspended']);
+        $license->fill(['status' => 'suspended'])->save();
 
         return ApiResponse::success(['license_id' => $id, 'status' => 'suspended']);
     }
@@ -40,7 +40,7 @@ class LicenseController extends Controller
     public function unsuspend(string $id): JsonResponse
     {
         $license = LicenseKey::query()->findOrFail($id);
-        $license->update(['status' => 'active']);
+        $license->fill(['status' => 'active'])->save();
 
         return ApiResponse::success(['license_id' => $id, 'status' => 'active']);
     }
@@ -48,7 +48,7 @@ class LicenseController extends Controller
     public function extend(string $id): JsonResponse
     {
         $license = LicenseKey::query()->findOrFail($id);
-        $license->update(['expires_at' => now()->addMonth()]);
+        $license->fill(['expires_at' => now()->addMonth()])->save();
 
         return ApiResponse::success(['license_id' => $id, 'extended' => true]);
     }

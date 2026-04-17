@@ -19,19 +19,10 @@
         <x-ui.button :href="route('admin.portal.dashboard')" variant="alt">← Quay lại tổng quan</x-ui.button>
     </x-ui.header>
 
-    <section class="card stack">
-        <x-ui.section-header title="Bộ lọc" subtitle="Tìm webhook config hoặc delivery theo event, status và endpoint." />
-        <div class="grid cols-4">
-            <x-ui.input label="Tìm kiếm" name="q" placeholder="license.revoked, del_abc123" />
-            <x-ui.input label="Sự kiện" name="event" placeholder="license.revoked" />
-            <x-ui.input label="Trạng thái" name="status" placeholder="200 / failed" />
-            <x-ui.input label="Endpoint" name="endpoint" placeholder="https://example.com/webhook" />
-        </div>
-        <div class="actions">
-            <x-ui.button>Lọc</x-ui.button>
-            <x-ui.button variant="alt">Xóa lọc</x-ui.button>
-        </div>
-    </section>
+    @php
+        $configs = $configs ?? collect();
+        $deliveries = $deliveries ?? collect();
+    @endphp
 
     <div class="grid cols-2" style="margin-top:16px;">
         <section class="card stack">
@@ -47,12 +38,30 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="mono">https://example.com/webhook</td>
-                            <td>license.revoked, license.renewed</td>
-                            <td><span class="badge ok">Hoạt động</span></td>
-                            <td><x-ui.button :href="route('admin.portal.webhook-delivery', ['id' => 1])" variant="alt">Xem delivery</x-ui.button></td>
-                        </tr>
+                        @forelse ($configs as $config)
+                            <tr>
+                                <td class="mono">{{ $config->url }}</td>
+                                <td>{{ implode(', ', $config->events ?? []) }}</td>
+                                <td>
+                                    @if ($config->is_active)
+                                        <span class="badge ok">Hoạt động</span>
+                                    @else
+                                        <span class="badge current">Tắt</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="actions">
+                                        <x-ui.button :href="route('admin.portal.webhook-delivery', ['id' => $config->id])" variant="alt">Xem</x-ui.button>
+                                        <form method="POST" action="{{ route('admin.portal.webhooks.retry', ['id' => $config->id]) }}">
+                                            @csrf
+                                            <x-ui.button type="submit" variant="danger">Retry</x-ui.button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <x-ui.table-empty colspan="4">Chưa có webhook config nào.</x-ui.table-empty>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -71,29 +80,27 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="mono">del_abc123</td>
-                            <td>license.revoked</td>
-                            <td><span class="badge ok">200</span></td>
-                            <td><x-ui.button :href="route('admin.portal.webhook-delivery', ['id' => 1])" variant="alt">Chi tiết</x-ui.button></td>
-                        </tr>
-                        <tr>
-                            <td class="mono">del_def456</td>
-                            <td>license.renewed</td>
-                            <td><span class="badge current">500</span></td>
-                            <td><x-ui.button variant="alt">Retry</x-ui.button></td>
-                        </tr>
+                        @forelse ($deliveries as $delivery)
+                            <tr>
+                                <td class="mono">{{ $delivery->id }}</td>
+                                <td>{{ $delivery->event }}</td>
+                                <td><span class="badge {{ ($delivery->status_code ?? 0) >= 200 && ($delivery->status_code ?? 0) < 300 ? 'ok' : 'current' }}">{{ $delivery->status_code ?? 'N/A' }}</span></td>
+                                <td>
+                                    <div class="actions">
+                                        <x-ui.button :href="route('admin.portal.webhook-delivery', ['id' => $delivery->id])" variant="alt">Chi tiết</x-ui.button>
+                                        <form method="POST" action="{{ route('admin.portal.webhooks.retry', ['id' => $delivery->id]) }}">
+                                            @csrf
+                                            <x-ui.button type="submit" variant="danger">Retry</x-ui.button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <x-ui.table-empty colspan="4">Chưa có delivery nào.</x-ui.table-empty>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
         </section>
-    </div>
-
-    <div class="actions" style="justify-content:space-between;margin-top:16px;">
-        <span class="muted">Trang 1 / 5</span>
-        <div class="actions">
-            <x-ui.button variant="alt">Trước</x-ui.button>
-            <x-ui.button variant="alt">Sau</x-ui.button>
-        </div>
     </div>
 @endsection

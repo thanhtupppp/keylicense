@@ -11,6 +11,7 @@ class WebhookOutboundService
 {
     public function deliver(WebhookConfig $config, string $event, array $payload): WebhookDelivery
     {
+        /** @var WebhookDelivery $attempt */
         $attempt = WebhookDelivery::query()->create([
             'webhook_config_id' => $config->id,
             'event' => $event,

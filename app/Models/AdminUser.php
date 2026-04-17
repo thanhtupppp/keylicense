@@ -7,6 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property bool $mfa_enabled
+ * @property string|null $mfa_secret
+ * @property \Illuminate\Support\Carbon|null $mfa_enabled_at
+ * @property int|null $mfa_failed_attempts
+ * @property \Illuminate\Support\Carbon|null $mfa_locked_until
+ * @property int|null $failed_login_attempts
+ * @property \Illuminate\Support\Carbon|null $locked_until
+ */
 class AdminUser extends Authenticatable
 {
     use HasFactory;

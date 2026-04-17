@@ -17,7 +17,7 @@ class InvoiceController extends Controller
     public function index(): JsonResponse
     {
         return ApiResponse::success([
-            'invoices' => Invoice::query()->latest()->get(),
+            'invoices' => Invoice::query()->latest('created_at')->get(['*']),
         ]);
     }
 
