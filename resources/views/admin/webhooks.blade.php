@@ -19,6 +19,11 @@
         <x-ui.button :href="route('admin.portal.dashboard')" variant="alt">← Quay lại tổng quan</x-ui.button>
     </x-ui.header>
 
+    @php
+        $configs = $configs ?? collect();
+        $deliveries = $deliveries ?? collect();
+    @endphp
+
     <div class="grid cols-2" style="margin-top:16px;">
         <section class="card stack">
             <x-ui.section-header title="Webhook configs" subtitle="Khai báo URL, secret và event subscriptions." />
@@ -33,7 +38,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($configs ?? [] as $config)
+                        @forelse ($configs as $config)
                             <tr>
                                 <td class="mono">{{ $config->url }}</td>
                                 <td>{{ implode(', ', $config->events ?? []) }}</td>
@@ -69,7 +74,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($deliveries ?? [] as $delivery)
+                        @forelse ($deliveries as $delivery)
                             <tr>
                                 <td class="mono">{{ $delivery->id }}</td>
                                 <td>{{ $delivery->event }}</td>
