@@ -202,9 +202,9 @@ Infrastructure
 - [x] Expiry handling cho challenge
       Grace period
 
-- [ ] Tạo cron/job cập nhật grace → expired
+- [x] Tạo cron/job cập nhật grace → expired
 
-- [ ] Bổ sung tests cho chuyển trạng thái tự động
+- [x] Bổ sung tests cho chuyển trạng thái tự động
       Sprint 10 — Renewal, Billing integration, Refund & Chargeback, Coupon
       Renewal
 
@@ -215,14 +215,10 @@ Infrastructure
 - [ ] Bổ sung idempotency cho event
       Billing integration
 
-- [ ] Chuẩn hóa adapter Stripe/Paddle
-
 - [ ] Auto-create entitlement từ order.created
 
 - [ ] Bổ sung webhook retry/error handling
       Refund & Chargeback
-
-- [ ] Tạo refunds table nếu chưa đủ
 
 - [ ] Auto-revoke flow khi refund/chargeback
 
@@ -239,34 +235,34 @@ Infrastructure
       Sprint 11 — Bulk ops, Multi-currency, Abuse detection, Webhook outbound
       Bulk operations
 
-- [ ] Tạo bulk_jobs
+- [x] Tạo bulk_jobs
 
-- [ ] Issue/revoke/export/import hàng loạt
+- [x] Issue/revoke/export/import hàng loạt
 
-- [ ] Async job tracking + progress + failure states
+- [x] Async job tracking + progress + failure states
       Multi-currency
 
-- [ ] Hoàn thiện plan_pricing
+- [x] Hoàn thiện plan_pricing
 
-- [ ] Bổ sung currency resolution logic
+- [x] Bổ sung currency resolution logic
 
-- [ ] Rà lại display/settlement currency
+- [x] Rà lại display/settlement currency
       Abuse detection
 
-- [ ] Rule engine nhiều IP
+- [x] Rule engine nhiều IP
 
-- [ ] Rule engine nhiều quốc gia
+- [x] Rule engine nhiều quốc gia
 
-- [ ] Rule engine activation threshold
+- [x] Rule engine activation threshold
 
-- [ ] Alerting cho admin
+- [x] Alerting cho admin
       Webhook outbound
 
-- [ ] Config webhook theo product/org
+- [x] Config webhook theo product/org
 
-- [ ] Delivery retry strategy
+- [x] Delivery retry strategy
 
-- [ ] Delivery status / dead-letter handling
+- [x] Delivery status / dead-letter handling
       Sprint 12 — Analytics, Performance
       Analytics
 

@@ -6,8 +6,6 @@ use App\Models\Plan;
 use App\Models\Product;
 use App\Models\Refund;
 
-// uses() ở đây chỉ để IDE (Intelephense) resolve $this đúng type
-// Runtime đã được handle bởi Pest.php
 uses(Tests\TestCase::class);
 
 test('admin can create refund record', function (): void {

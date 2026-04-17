@@ -18,6 +18,7 @@ class ResponseMapper
             (bool) data_get($payload, 'data.success', true),
             data_get($payload, 'data.activation_id'),
             data_get($payload, 'data.status'),
+            data_get($payload, 'data.message'),
             $payload,
         );
     }

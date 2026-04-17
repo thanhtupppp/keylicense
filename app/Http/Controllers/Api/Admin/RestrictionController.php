@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\IpBlocklist;
 use App\Models\LicenseIpAllowlist;
 use App\Models\PlanGeoRestriction;
+use App\Services\Billing\AbuseDetectionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,10 @@ use Illuminate\Validation\Rule;
 
 class RestrictionController extends Controller
 {
+    public function __construct(private readonly AbuseDetectionService $abuseDetectionService)
+    {
+    }
+
     public function licenseAllowlist(string $licenseId): JsonResponse
     {
         return ApiResponse::success([
@@ -115,5 +120,25 @@ class RestrictionController extends Controller
             'plan_id' => $planId,
             'entry' => $entry,
         ], 201);
+    }
+
+    public function detect(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'subscription_id' => ['required', 'uuid'],
+            'license_id' => ['required', 'uuid'],
+            'ip' => ['required', 'string', 'max:64'],
+            'country_code' => ['required', 'string', 'size:2'],
+        ]);
+
+        $blocked = $this->abuseDetectionService->isIpBlocked($payload['ip'])
+            || ! $this->abuseDetectionService->isLicenseIpAllowed($payload['license_id'], $payload['ip']);
+
+        $allowedCountry = $this->abuseDetectionService->isCountryAllowed($payload['subscription_id'], $payload['country_code']);
+
+        return ApiResponse::success([
+            'blocked' => $blocked || ! $allowedCountry,
+            'country_allowed' => $allowedCountry,
+        ]);
     }
 }

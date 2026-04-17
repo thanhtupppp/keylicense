@@ -7,6 +7,7 @@ use App\Models\DunningLog;
 use App\Models\LicenseKey;
 use App\Models\Subscription;
 use App\Services\Billing\DunningOrchestrator;
+use App\Services\Billing\RenewalService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,10 +39,11 @@ class BillingWebhookController extends Controller
         ]);
     }
 
-    public function paymentSucceeded(Request $request): JsonResponse
+    public function paymentSucceeded(Request $request, RenewalService $renewalService): JsonResponse
     {
         $subscription = Subscription::query()->findOrFail($request->input('subscription_id'));
-        $this->orchestrator->handlePaymentSucceeded($subscription);
+        $renewed = $renewalService->renew($subscription);
+        $this->orchestrator->handlePaymentSucceeded($renewed);
 
         LicenseKey::query()
             ->where('entitlement_id', $subscription->entitlement_id)
@@ -60,6 +62,24 @@ class BillingWebhookController extends Controller
             'processed' => true,
             'status' => 'active',
             'subscription_id' => $subscription->id,
+            'current_period_end' => $renewed->current_period_end?->toISOString(),
+        ]);
+    }
+
+    public function orderCreated(Request $request, RenewalService $renewalService): JsonResponse
+    {
+        $payload = $request->validate([
+            'subscription_id' => ['required', 'uuid'],
+        ]);
+
+        $subscription = Subscription::query()->findOrFail($payload['subscription_id']);
+        $renewed = $renewalService->renew($subscription);
+
+        return ApiResponse::success([
+            'processed' => true,
+            'status' => 'active',
+            'subscription_id' => $subscription->id,
+            'current_period_end' => $renewed->current_period_end?->toISOString(),
         ]);
     }
 }

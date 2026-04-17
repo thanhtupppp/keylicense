@@ -36,6 +36,9 @@ final class AdminAuthFixtures
             'expires_at' => $expiresAt,
         ]);
 
-        return ['Authorization' => 'Bearer '.$token];
+        return [
+            'Authorization' => 'Bearer '.$token,
+            'X-Admin-Session' => $token,
+        ];
     }
 }

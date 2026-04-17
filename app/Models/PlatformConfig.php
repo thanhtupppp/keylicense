@@ -39,6 +39,11 @@ class PlatformConfig extends Model
         ];
     }
 
+    public function castValue(): mixed
+    {
+        return $this->getTypedValueAttribute();
+    }
+
     public function getTypedValueAttribute(): mixed
     {
         return match ($this->value_type) {

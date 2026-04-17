@@ -41,4 +41,14 @@ class Plan extends Model
     {
         return $this->hasMany(PlanPricing::class);
     }
+
+    public function defaultPricing(): HasMany
+    {
+        return $this->pricing()->where('is_default', true);
+    }
+
+    public function pricingForCurrency(string $currency): HasMany
+    {
+        return $this->pricing()->where('currency', strtoupper($currency));
+    }
 }

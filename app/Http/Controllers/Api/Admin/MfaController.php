@@ -48,35 +48,28 @@ class MfaController extends Controller
             : ApiResponse::error('MFA_INVALID', 'Invalid MFA code.', 422);
     }
 
-    public function challenge(Request $request, AdminLoginService $adminLoginService): JsonResponse
+    public function challenge(Request $request, AdminMfaService $mfaService): JsonResponse
     {
         $payload = $request->validate([
             'code' => ['required', 'string'],
             'mfa_token' => ['required', 'string'],
         ]);
 
-        $result = $adminLoginService->challengeMfa($payload['mfa_token'], $payload['code']);
+        $admin = $this->admin($request);
 
-        if (isset($result['error'])) {
-            return ApiResponse::error(
-                $result['error']['code'],
-                $result['error']['message'],
-                $result['error']['status']
-            );
+        if (! $admin) {
+            return ApiResponse::error('UNAUTHORIZED', 'Admin authentication required.', 401);
         }
 
-        if (isset($result['admin']) && $result['admin'] instanceof AdminUser) {
-            $result['admin'] = $this->adminPayload($result['admin']);
-        }
+        $result = $mfaService->challenge($admin, $payload['code']);
 
-        return ApiResponse::success([
-            'admin' => $result['admin'] ?? null,
-            'token' => $result['token'] ?? null,
-            'token_id' => $result['token_id'] ?? null,
-            'expires_in' => $result['expires_in'] ?? null,
-            'expires_at' => $result['expires_at'] ?? null,
-            'kicked_count' => $result['kicked_count'] ?? 0,
-        ]);
+        return $result->valid
+            ? ApiResponse::success([
+                'admin' => $this->adminPayload($admin),
+                'mfa_token' => $payload['mfa_token'],
+                ...$result->toArray(),
+            ])
+            : ApiResponse::error('MFA_INVALID', 'Invalid MFA code.', 422);
     }
 
     public function disable(Request $request, AdminMfaService $mfaService): JsonResponse

@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('platform_configs')) {
+            return;
+        }
+
         Schema::create('platform_configs', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('key', 128)->unique();
