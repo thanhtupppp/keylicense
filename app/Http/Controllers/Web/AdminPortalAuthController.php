@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminToken;
 use App\Models\AdminTokenAuditLog;
 use App\Services\Admin\AdminLoginService;
+use App\Services\Reporting\AnalyticsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Illuminate\View\View;
 class AdminPortalAuthController extends Controller
 {
     private const OBS_EVENT_CODE_AUTH_TOKEN_GUARD_FAIL = 'AUTH_TOKEN_GUARD_FAIL';
+
     public function showLogin(Request $request): View|RedirectResponse
     {
         if ($request->session()->has('admin_api_token')) {
@@ -74,7 +76,7 @@ class AdminPortalAuthController extends Controller
         return redirect()->route('admin.portal.dashboard');
     }
 
-    public function dashboard(Request $request): View|RedirectResponse
+    public function dashboard(Request $request, AnalyticsService $analyticsService): View|RedirectResponse
     {
         if (! $request->session()->has('admin_api_token')) {
             return redirect()->route('admin.portal.login');
@@ -85,6 +87,7 @@ class AdminPortalAuthController extends Controller
             'token' => $request->session()->get('admin_api_token'),
             'session_expires_at' => $request->session()->get('admin_session_expires_at'),
             'session_timeout' => $request->session()->get('admin_session_timeout', 7200),
+            'metrics' => $analyticsService->dashboard(),
         ]);
     }
 
