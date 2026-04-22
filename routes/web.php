@@ -26,7 +26,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 // Admin profile
 Route::prefix('admin')->name('admin.')->middleware(['admin.auth'])->group(function () {
     Route::get('profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
-    Route::put('profile', [AdminProfileController::class, 'update'])->name('profile.update');
+    Route::put('profile', [AdminProfileController::class, 'update'])->middleware('password.confirm')->name('profile.update');
 });
 
 // Protected admin routes
@@ -44,14 +44,28 @@ Route::prefix('admin')->name('admin.')->middleware(['admin.auth'])->group(functi
     Route::patch('products/{product}/toggle-status', [ProductController::class, 'toggleStatus'])
         ->name('products.toggle-status');
 
-    Route::get('licenses/export', [LicenseController::class, 'export'])->name('licenses.export');
+    Route::get('licenses/export', [LicenseController::class, 'export'])
+        ->middleware('password.confirm')
+        ->name('licenses.export');
     Route::get('licenses/batch-created', [LicenseController::class, 'batchCreated'])->name('licenses.batch-created');
     Route::resource('licenses', LicenseController::class)->except(['edit', 'update', 'destroy']);
 
-    Route::post('licenses/{license}/revoke', [LicenseController::class, 'revoke'])->middleware('throttle:10,1')->name('licenses.revoke');
-    Route::post('licenses/{license}/suspend', [LicenseController::class, 'suspend'])->middleware('throttle:10,1')->name('licenses.suspend');
-    Route::post('licenses/{license}/restore', [LicenseController::class, 'restore'])->middleware('throttle:10,1')->name('licenses.restore');
-    Route::post('licenses/{license}/renew', [LicenseController::class, 'renew'])->middleware('throttle:10,1')->name('licenses.renew');
-    Route::post('licenses/{license}/unrevoke', [LicenseController::class, 'unrevoke'])->middleware('throttle:10,1')->name('licenses.unrevoke');
-    Route::post('licenses/{license}/revoke-activation', [LicenseController::class, 'revokeActivation'])->middleware('throttle:10,1')->name('licenses.revoke-activation');
+    Route::post('licenses/{license}/revoke', [LicenseController::class, 'revoke'])
+        ->middleware(['throttle:10,1', 'password.confirm'])
+        ->name('licenses.revoke');
+    Route::post('licenses/{license}/suspend', [LicenseController::class, 'suspend'])
+        ->middleware(['throttle:10,1', 'password.confirm'])
+        ->name('licenses.suspend');
+    Route::post('licenses/{license}/restore', [LicenseController::class, 'restore'])
+        ->middleware(['throttle:10,1', 'password.confirm'])
+        ->name('licenses.restore');
+    Route::post('licenses/{license}/renew', [LicenseController::class, 'renew'])
+        ->middleware(['throttle:10,1', 'password.confirm'])
+        ->name('licenses.renew');
+    Route::post('licenses/{license}/unrevoke', [LicenseController::class, 'unrevoke'])
+        ->middleware(['throttle:10,1', 'password.confirm'])
+        ->name('licenses.unrevoke');
+    Route::post('licenses/{license}/revoke-activation', [LicenseController::class, 'revokeActivation'])
+        ->middleware(['throttle:10,1', 'password.confirm'])
+        ->name('licenses.revoke-activation');
 });
